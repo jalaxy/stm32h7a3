@@ -1,0 +1,9 @@
+../Core/Src/print.c:8:7:_putc	40	static
+../Core/Src/print.c:27:7:_puts	16	static
+../Core/Src/print.c:34:7:_putul	32	static
+../Core/Src/print.c:42:7:_putl	32	static
+../Core/Src/print.c:55:7:_putf	32	static
+../Core/Src/print.c:73:7:clrscreen	16	static
+../Core/Src/print.c:81:7:scrollup	40	static
+../Core/Src/print.c:94:6:draw_line	40	static
+../Core/Src/print.c:104:6:draw_ellipse	56	static
