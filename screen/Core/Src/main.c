@@ -23,6 +23,7 @@
 /* USER CODE BEGIN Includes */
 //#include "minion.h"
 #include "print.h"
+#include "touch.h"
 
 /* USER CODE END Includes */
 
@@ -41,6 +42,7 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
+ ADC_HandleTypeDef hadc1;
 
 I2C_HandleTypeDef hi2c1;
 
@@ -59,6 +61,7 @@ static void MX_USART3_UART_Init(void);
 static void MX_USB_OTG_HS_USB_Init(void);
 static void MX_LTDC_Init(void);
 static void MX_I2C1_Init(void);
+static void MX_ADC1_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -92,6 +95,14 @@ int main(void)
 
   /* USER CODE BEGIN SysInit */
 
+	HAL_GPIO_WritePin(LTDC_RST_GPIO_Port, LTDC_RST_Pin, RESET);
+	HAL_GPIO_WritePin(I2C1_RST_GPIO_Port, I2C1_RST_Pin, RESET);
+	HAL_Delay(100);
+	HAL_GPIO_WritePin(LTDC_RST_GPIO_Port, LTDC_RST_Pin, SET); // LCD reset
+	HAL_GPIO_WritePin(I2C1_RST_GPIO_Port, I2C1_RST_Pin, SET); // I2C reset
+	HAL_GPIO_WritePin(LTDC_BL_GPIO_Port, LTDC_BL_Pin, SET); // background light on
+	pos_t pos = clrscreen();
+
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
@@ -100,27 +111,50 @@ int main(void)
   MX_USB_OTG_HS_USB_Init();
   MX_LTDC_Init();
   MX_I2C1_Init();
+  MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-	HAL_GPIO_WritePin(LTDC_RST_GPIO_Port, LTDC_RST_Pin, RESET);
-	HAL_Delay(100);
-	HAL_GPIO_WritePin(LTDC_RST_GPIO_Port, LTDC_RST_Pin, SET); // LCD reset
-	HAL_GPIO_WritePin(LTDC_BL_GPIO_Port, LTDC_BL_Pin, SET); // background light on
-	pos_t pos = clrscreen();
-	pos = _puts(pos, "000000000000000000000000000000000000000000000000000000000000111111111111111111111111111111111111111111111111111111111111000000000000000000000000000000000000000000000000000000000000111111111111111111111111111111111111111111111111111111111111\n");
-	draw_line(POS(100, 200), POS(300, 500), 0x0);
-	draw_ellipse(POS(100, 200), POS(50, 50), 0xf800);
-	draw_ellipse(POS(300, 500), POS(50, 50), 0x001f);
-	draw_ellipse(POS(400, 300), POS(300, 300), 0x0000);
-	draw_ellipse(POS(400, 300), POS(400, 400), 0x0000);
-	draw_ellipse(POS(400, 300), POS(400, 300), 0x0000);
+	pos = _putl(pos, touch_init(&hi2c1), 10);
+	pos = _putc(pos, '\n');
+	unsigned char addr[] = { 0x00, 0xa4, 0x80, 0x88, 0xa1, 0xa2, 0x02 }, buf[1];
+	for (int i = 0; i < sizeof(addr); i++)
+	{
+		char suc = 1;
+		suc &= HAL_I2C_Master_Transmit(&hi2c1, 0x70, &addr[i], 1, HAL_MAX_DELAY) == 0;
+		suc &= HAL_I2C_Master_Receive(&hi2c1, 0x70, buf, 1, HAL_MAX_DELAY) == 0;
+		pos = _puts(pos, "0x");
+		pos = _putl(pos, addr[i], 16);
+		pos = _puts(pos, ": ");
+		pos = _putl(pos, suc, 2);
+		pos = _putc(pos, ' ');
+		pos = _putl(pos, buf[0], 16);
+		pos = _putc(pos, '\n');
+		//HAL_Delay(100);
+	}
+	while(1)
+		;
 	while (1) {
 //		HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_0);
-//		HAL_Delay(200);
+		clrscreen();
+		unsigned short px[5], py[5], status[5];
+		char suc = touch_pos(&hi2c1, px, py, status);
+		if (!suc)
+			_puts(pos, "Error");
+		for (int i = 0; i < 5; i++)
+		{
+			pos = _putl(pos, px[i], 10);
+			pos = _putc(pos, ' ');
+			pos = _putl(pos, py[i], 10);
+			pos = _putc(pos, ' ');
+			pos = _putl(pos, status[i], 2);
+			pos = _putc(pos, '\n');
+		}
+		pos = POS(MARGIN_X, MARGIN_Y);
+		HAL_Delay(1000);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -192,6 +226,74 @@ void SystemClock_Config(void)
 }
 
 /**
+  * @brief ADC1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_ADC1_Init(void)
+{
+
+  /* USER CODE BEGIN ADC1_Init 0 */
+
+  /* USER CODE END ADC1_Init 0 */
+
+  ADC_MultiModeTypeDef multimode = {0};
+  ADC_ChannelConfTypeDef sConfig = {0};
+
+  /* USER CODE BEGIN ADC1_Init 1 */
+
+  /* USER CODE END ADC1_Init 1 */
+
+  /** Common config
+  */
+  hadc1.Instance = ADC1;
+  hadc1.Init.ClockPrescaler = ADC_CLOCK_ASYNC_DIV1;
+  hadc1.Init.Resolution = ADC_RESOLUTION_16B;
+  hadc1.Init.ScanConvMode = ADC_SCAN_DISABLE;
+  hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
+  hadc1.Init.LowPowerAutoWait = DISABLE;
+  hadc1.Init.ContinuousConvMode = DISABLE;
+  hadc1.Init.NbrOfConversion = 1;
+  hadc1.Init.DiscontinuousConvMode = DISABLE;
+  hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
+  hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
+  hadc1.Init.ConversionDataManagement = ADC_CONVERSIONDATA_DR;
+  hadc1.Init.Overrun = ADC_OVR_DATA_PRESERVED;
+  hadc1.Init.LeftBitShift = ADC_LEFTBITSHIFT_NONE;
+  hadc1.Init.OversamplingMode = DISABLE;
+  if (HAL_ADC_Init(&hadc1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Configure the ADC multi-mode
+  */
+  multimode.Mode = ADC_MODE_INDEPENDENT;
+  if (HAL_ADCEx_MultiModeConfigChannel(&hadc1, &multimode) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Configure Regular Channel
+  */
+  sConfig.Channel = ADC_CHANNEL_2;
+  sConfig.Rank = ADC_REGULAR_RANK_1;
+  sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
+  sConfig.SingleDiff = ADC_SINGLE_ENDED;
+  sConfig.OffsetNumber = ADC_OFFSET_NONE;
+  sConfig.Offset = 0;
+  sConfig.OffsetSignedSaturation = DISABLE;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN ADC1_Init 2 */
+
+  /* USER CODE END ADC1_Init 2 */
+
+}
+
+/**
   * @brief I2C1 Initialization Function
   * @param None
   * @retval None
@@ -207,8 +309,8 @@ static void MX_I2C1_Init(void)
 
   /* USER CODE END I2C1_Init 1 */
   hi2c1.Instance = I2C1;
-  hi2c1.Init.Timing = 0x20B0CCFF;
-  hi2c1.Init.OwnAddress1 = 224;
+  hi2c1.Init.Timing = 0x00D04BFF;
+  hi2c1.Init.OwnAddress1 = 112;
   hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
   hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
   hi2c1.Init.OwnAddress2 = 0;
@@ -398,10 +500,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(USB_FS_PWR_EN_GPIO_Port, USB_FS_PWR_EN_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(LTDC_BL_GPIO_Port, LTDC_BL_Pin, GPIO_PIN_SET);
-
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(I2C1_RST_GPIO_Port, I2C1_RST_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, LTDC_BL_Pin|I2C1_RST_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, LD1_Pin|LD3_Pin, GPIO_PIN_RESET);
