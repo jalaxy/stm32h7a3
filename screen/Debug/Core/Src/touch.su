@@ -1,2 +1,2 @@
 ../Core/Src/touch.c:3:6:touch_init	32	static
-../Core/Src/touch.c:22:6:touch_pos	56	static
+../Core/Src/touch.c:20:6:touch_pos	56	static

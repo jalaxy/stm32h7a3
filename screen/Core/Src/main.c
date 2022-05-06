@@ -101,6 +101,7 @@ int main(void)
 	HAL_GPIO_WritePin(LTDC_RST_GPIO_Port, LTDC_RST_Pin, SET); // LCD reset
 	HAL_GPIO_WritePin(I2C1_RST_GPIO_Port, I2C1_RST_Pin, SET); // I2C reset
 	HAL_GPIO_WritePin(LTDC_BL_GPIO_Port, LTDC_BL_Pin, SET); // background light on
+	HAL_Delay(100);
 	pos_t pos = clrscreen();
 
   /* USER CODE END SysInit */
@@ -118,42 +119,33 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-	pos = _putl(pos, touch_init(&hi2c1), 10);
-	pos = _putc(pos, '\n');
-	unsigned char addr[] = { 0x00, 0xa4, 0x80, 0x88, 0xa1, 0xa2, 0x02 }, buf[1];
-	for (int i = 0; i < sizeof(addr); i++) {
-		char suc = 1;
-		suc &= HAL_I2C_Master_Transmit(&hi2c1, 0x70, &addr[i], 1, HAL_MAX_DELAY)
-				== 0;
-		suc &= HAL_I2C_Master_Receive(&hi2c1, 0x70, buf, 1, HAL_MAX_DELAY) == 0;
-		pos = _puts(pos, "0x");
-		pos = _putl(pos, addr[i], 16);
-		pos = _puts(pos, ": ");
-		pos = _putl(pos, suc, 2);
-		pos = _putc(pos, ' ');
-		pos = _putl(pos, buf[0], 16);
-		pos = _putc(pos, '\n');
-		//HAL_Delay(100);
-	}
-	while (1)
-		;
+	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, SET);
+	HAL_ADCEx_Calibration_Start(&hadc1, ADC_CALIB_OFFSET, ADC_SINGLE_ENDED);
+	HAL_Delay(200);
+
+//	pos = _putl(pos, touch_init(&hi2c1), 10);
+//	pos = _putc(pos, '\n');
+//	unsigned char addr[] = { 0x00, 0xa4, 0x80, 0x88, 0xa1, 0xa2, 0x02 }, buf[1];
+//	for (int i = 0; i < sizeof(addr); i++) {
+//		char suc = 1;
+//		suc &= HAL_I2C_Master_Transmit(&hi2c1, 0x70, &addr[i], 1,
+//		HAL_MAX_DELAY) == 0;
+//		suc &= HAL_I2C_Master_Receive(&hi2c1, 0x70, buf, 1, HAL_MAX_DELAY) == 0;
+//		pos = _puts(pos, "0x");
+//		pos = _putl(pos, addr[i], 16);
+//		pos = _puts(pos, ": ");
+//		pos = _putl(pos, suc, 2);
+//		pos = _putc(pos, ' ');
+//		pos = _putl(pos, buf[0], 16);
+//		pos = _putc(pos, '\n');
+//		//HAL_Delay(100);
+//	}
+//	while (1)
+//		;
 	while (1) {
-//		HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_0);
-		unsigned short px[5], py[5], status[5];
-		char suc = touch_pos(&hi2c1, px, py, status);
-		clrscreen();
-		if (!suc)
-			_puts(pos, "Error");
-		else
-			for (int i = 0; i < 5; i++) {
-				pos = _putl(pos, px[i], 10);
-				pos = _putc(pos, ' ');
-				pos = _putl(pos, py[i], 10);
-				pos = _putc(pos, ' ');
-				pos = _putl(pos, status[i], 2);
-				pos = _putc(pos, '\n');
-			}
-		pos = POS(MARGIN_X, MARGIN_Y);
+		HAL_ADC_Start(&hadc1);
+		HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
+		_putl(pos, HAL_ADC_GetValue(&hadc1), 10);
 		HAL_Delay(1000);
     /* USER CODE END WHILE */
 

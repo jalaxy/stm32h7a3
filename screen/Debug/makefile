@@ -75,8 +75,8 @@ all: main-build
 main-build: screen.elf secondary-outputs
 
 # Tool invocations
-screen.elf screen.map: $(OBJS) $(USER_OBJS) C:\Users\JXY\Desktop\stm32h7a3\screen\STM32H7A3ZITXQ_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-g++ -o "screen.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m7 -T"C:\Users\JXY\Desktop\stm32h7a3\screen\STM32H7A3ZITXQ_FLASH.ld" --specs=nosys.specs -Wl,-Map="screen.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv5-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -lstdc++ -lsupc++ -Wl,--end-group
+screen.elf screen.map: $(OBJS) $(USER_OBJS) C:\Users\JYC\Desktop\project\stm32h7a3\screen\STM32H7A3ZITXQ_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-g++ -o "screen.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m7 -T"C:\Users\JYC\Desktop\project\stm32h7a3\screen\STM32H7A3ZITXQ_FLASH.ld" --specs=nosys.specs -Wl,-Map="screen.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv5-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -lstdc++ -lsupc++ -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 
