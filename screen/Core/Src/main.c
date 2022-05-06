@@ -121,10 +121,10 @@ int main(void)
 	pos = _putl(pos, touch_init(&hi2c1), 10);
 	pos = _putc(pos, '\n');
 	unsigned char addr[] = { 0x00, 0xa4, 0x80, 0x88, 0xa1, 0xa2, 0x02 }, buf[1];
-	for (int i = 0; i < sizeof(addr); i++)
-	{
+	for (int i = 0; i < sizeof(addr); i++) {
 		char suc = 1;
-		suc &= HAL_I2C_Master_Transmit(&hi2c1, 0x70, &addr[i], 1, HAL_MAX_DELAY) == 0;
+		suc &= HAL_I2C_Master_Transmit(&hi2c1, 0x70, &addr[i], 1, HAL_MAX_DELAY)
+				== 0;
 		suc &= HAL_I2C_Master_Receive(&hi2c1, 0x70, buf, 1, HAL_MAX_DELAY) == 0;
 		pos = _puts(pos, "0x");
 		pos = _putl(pos, addr[i], 16);
@@ -135,24 +135,24 @@ int main(void)
 		pos = _putc(pos, '\n');
 		//HAL_Delay(100);
 	}
-	while(1)
+	while (1)
 		;
 	while (1) {
 //		HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_0);
-		clrscreen();
 		unsigned short px[5], py[5], status[5];
 		char suc = touch_pos(&hi2c1, px, py, status);
+		clrscreen();
 		if (!suc)
 			_puts(pos, "Error");
-		for (int i = 0; i < 5; i++)
-		{
-			pos = _putl(pos, px[i], 10);
-			pos = _putc(pos, ' ');
-			pos = _putl(pos, py[i], 10);
-			pos = _putc(pos, ' ');
-			pos = _putl(pos, status[i], 2);
-			pos = _putc(pos, '\n');
-		}
+		else
+			for (int i = 0; i < 5; i++) {
+				pos = _putl(pos, px[i], 10);
+				pos = _putc(pos, ' ');
+				pos = _putl(pos, py[i], 10);
+				pos = _putc(pos, ' ');
+				pos = _putl(pos, status[i], 2);
+				pos = _putc(pos, '\n');
+			}
 		pos = POS(MARGIN_X, MARGIN_Y);
 		HAL_Delay(1000);
     /* USER CODE END WHILE */
@@ -524,12 +524,19 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(USB_FS_PWR_EN_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : LTDC_BL_Pin I2C1_RST_Pin */
-  GPIO_InitStruct.Pin = LTDC_BL_Pin|I2C1_RST_Pin;
+  /*Configure GPIO pin : LTDC_BL_Pin */
+  GPIO_InitStruct.Pin = LTDC_BL_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+  HAL_GPIO_Init(LTDC_BL_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : I2C1_RST_Pin */
+  GPIO_InitStruct.Pin = I2C1_RST_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(I2C1_RST_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : LD1_Pin LD3_Pin */
   GPIO_InitStruct.Pin = LD1_Pin|LD3_Pin;
