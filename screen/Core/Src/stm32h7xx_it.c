@@ -204,29 +204,17 @@ void SysTick_Handler(void)
 /**
   * @brief This function handles EXTI line[9:5] interrupts.
   */
+#include "print.h"
 void EXTI9_5_IRQHandler(void)
 {
   /* USER CODE BEGIN EXTI9_5_IRQn 0 */
-//	pos_t pos = POS(MARGIN_X, MARGIN_Y);
-//	if (__HAL_GPIO_EXTI_GET_FLAG(I2C1_INT_Pin)) {
-//		unsigned short px[5], py[5], status[5];
-//		char suc = touch_pos(&hi2c1, px, py, status);
-//		for (int i = 0; i < 300; i++)
-//			for (int j = 0; j < 200; j++)
-//				pixels_565[i][j] = 0xffff;
-//		if (!suc)
-//			pos = _puts(pos, "Error");
-//		pos = _putc(pos, '\n');
-//		for (int i = 0; i < 5; i++) {
-//			pos = _putl(pos, px[i], 10);
-//			pos = _putc(pos, ' ');
-//			pos = _putl(pos, py[i], 10);
-//			pos = _putc(pos, ' ');
-//			pos = _putl(pos, status[i], 2);
-//			pos = _putc(pos, '\n');
-//		}
-//		pos = POS(MARGIN_X, MARGIN_Y);
-//	}
+	if (__HAL_GPIO_EXTI_GET_FLAG(I2C1_INT_Pin)) {
+		unsigned short x[5], y[5];
+		char n = touch_pos(&hi2c1, x, y, NULL);
+		for (int i = 0; i < n; i++)
+			if (IN_WINDOW(x[i], y[i]))
+				draw_dot(POS(x[i], y[i]), 0xf800);
+	}
   /* USER CODE END EXTI9_5_IRQn 0 */
   HAL_GPIO_EXTI_IRQHandler(USB_FS_OVCR_Pin);
   HAL_GPIO_EXTI_IRQHandler(I2C1_INT_Pin);

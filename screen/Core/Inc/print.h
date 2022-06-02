@@ -18,7 +18,7 @@ pos_t _puts(pos_t pos, char *s);
 pos_t _putul(pos_t pos, unsigned long ul, int base);
 pos_t _putl(pos_t pos, long l, int base);
 pos_t _putf(pos_t pos, float f, int n);
-pos_t clrscreen();
+pos_t clrscreen(color_t c);
 pos_t scrollup(pos_t pos, int n);
 void draw_line(pos_t a, pos_t b, color_t c);
 void draw_ellipse(pos_t ct, pos_t r, color_t c);

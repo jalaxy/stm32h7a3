@@ -1,6 +1,7 @@
 #include "print.h"
 #include "monofont.h"
 #include "math.h"
+#include "string.h"
 
 unsigned short pixels_565[WINDOW_HEIGHT][WINDOW_WIDTH];
 float linespace = 1.5;
@@ -62,10 +63,10 @@ pos_t _putf(pos_t pos, float f, int n) {
 	return pos;
 }
 
-pos_t clrscreen() {
+pos_t clrscreen(color_t c) {
 	for (int i = 0; i < WINDOW_HEIGHT; i++)
 		for (int j = 0; j < WINDOW_WIDTH; j++)
-			pixels_565[i][j] = 0xffff;
+			pixels_565[i][j] = c;
 	return POS(MARGIN_X, MARGIN_Y);
 }
 
