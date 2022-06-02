@@ -6,39 +6,24 @@
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS += \
 ../Core/Src/main.c \
-../Core/Src/minion.c \
-../Core/Src/monofont.c \
-../Core/Src/print.c \
+../Core/Src/screen.c \
 ../Core/Src/stm32h7xx_hal_msp.c \
 ../Core/Src/stm32h7xx_it.c \
-../Core/Src/syscalls.c \
-../Core/Src/sysmem.c \
-../Core/Src/system_stm32h7xx.c \
-../Core/Src/touch.c 
+../Core/Src/system_stm32h7xx.c 
 
 C_DEPS += \
 ./Core/Src/main.d \
-./Core/Src/minion.d \
-./Core/Src/monofont.d \
-./Core/Src/print.d \
+./Core/Src/screen.d \
 ./Core/Src/stm32h7xx_hal_msp.d \
 ./Core/Src/stm32h7xx_it.d \
-./Core/Src/syscalls.d \
-./Core/Src/sysmem.d \
-./Core/Src/system_stm32h7xx.d \
-./Core/Src/touch.d 
+./Core/Src/system_stm32h7xx.d 
 
 OBJS += \
 ./Core/Src/main.o \
-./Core/Src/minion.o \
-./Core/Src/monofont.o \
-./Core/Src/print.o \
+./Core/Src/screen.o \
 ./Core/Src/stm32h7xx_hal_msp.o \
 ./Core/Src/stm32h7xx_it.o \
-./Core/Src/syscalls.o \
-./Core/Src/sysmem.o \
-./Core/Src/system_stm32h7xx.o \
-./Core/Src/touch.o 
+./Core/Src/system_stm32h7xx.o 
 
 
 # Each subdirectory must supply rules for building sources it contributes
@@ -48,7 +33,7 @@ Core/Src/%.o Core/Src/%.su: ../Core/Src/%.c Core/Src/subdir.mk
 clean: clean-Core-2f-Src
 
 clean-Core-2f-Src:
-	-$(RM) ./Core/Src/main.d ./Core/Src/main.o ./Core/Src/main.su ./Core/Src/minion.d ./Core/Src/minion.o ./Core/Src/minion.su ./Core/Src/monofont.d ./Core/Src/monofont.o ./Core/Src/monofont.su ./Core/Src/print.d ./Core/Src/print.o ./Core/Src/print.su ./Core/Src/stm32h7xx_hal_msp.d ./Core/Src/stm32h7xx_hal_msp.o ./Core/Src/stm32h7xx_hal_msp.su ./Core/Src/stm32h7xx_it.d ./Core/Src/stm32h7xx_it.o ./Core/Src/stm32h7xx_it.su ./Core/Src/syscalls.d ./Core/Src/syscalls.o ./Core/Src/syscalls.su ./Core/Src/sysmem.d ./Core/Src/sysmem.o ./Core/Src/sysmem.su ./Core/Src/system_stm32h7xx.d ./Core/Src/system_stm32h7xx.o ./Core/Src/system_stm32h7xx.su ./Core/Src/touch.d ./Core/Src/touch.o ./Core/Src/touch.su
+	-$(RM) ./Core/Src/main.d ./Core/Src/main.o ./Core/Src/main.su ./Core/Src/screen.d ./Core/Src/screen.o ./Core/Src/screen.su ./Core/Src/stm32h7xx_hal_msp.d ./Core/Src/stm32h7xx_hal_msp.o ./Core/Src/stm32h7xx_hal_msp.su ./Core/Src/stm32h7xx_it.d ./Core/Src/stm32h7xx_it.o ./Core/Src/stm32h7xx_it.su ./Core/Src/system_stm32h7xx.d ./Core/Src/system_stm32h7xx.o ./Core/Src/system_stm32h7xx.su
 
 .PHONY: clean-Core-2f-Src
 

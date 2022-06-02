@@ -21,10 +21,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-//#include "minion.h"
-#include "print.h"
-#include "touch.h"
-
+#include "screen.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -48,6 +45,8 @@ I2C_HandleTypeDef hi2c1;
 
 LTDC_HandleTypeDef hltdc;
 
+TIM_HandleTypeDef htim17;
+
 UART_HandleTypeDef huart3;
 
 /* USER CODE BEGIN PV */
@@ -62,6 +61,7 @@ static void MX_USB_OTG_HS_USB_Init(void);
 static void MX_LTDC_Init(void);
 static void MX_I2C1_Init(void);
 static void MX_ADC1_Init(void);
+static void MX_TIM17_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -94,16 +94,14 @@ int main(void)
   SystemClock_Config();
 
   /* USER CODE BEGIN SysInit */
-
+	HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, RESET);
 	HAL_GPIO_WritePin(LTDC_RST_GPIO_Port, LTDC_RST_Pin, RESET);
 	HAL_GPIO_WritePin(I2C1_RST_GPIO_Port, I2C1_RST_Pin, RESET);
 	HAL_Delay(100);
 	HAL_GPIO_WritePin(LTDC_RST_GPIO_Port, LTDC_RST_Pin, SET); // LCD reset
 	HAL_GPIO_WritePin(I2C1_RST_GPIO_Port, I2C1_RST_Pin, SET); // I2C reset
-	HAL_GPIO_WritePin(LTDC_BL_GPIO_Port, LTDC_BL_Pin, SET); // background light on
+	touch_reg_init(&hi2c1); // touch screen register
 	HAL_Delay(100);
-	pos_t pos = clrscreen(0xffff);
-
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
@@ -113,15 +111,21 @@ int main(void)
   MX_LTDC_Init();
   MX_I2C1_Init();
   MX_ADC1_Init();
+  MX_TIM17_Init();
   /* USER CODE BEGIN 2 */
-	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, RESET);
-	touch_init(&hi2c1);
-	HAL_ADCEx_Calibration_Start(&hadc1, ADC_CALIB_OFFSET, ADC_SINGLE_ENDED);
-	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, SET);
+	HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, SET);
+	pos_t pos = clrscreen(0xffff);
+	HAL_GPIO_WritePin(LTDC_BL_GPIO_Port, LTDC_BL_Pin, SET);
+	HAL_TIM_Base_Start_IT(&htim17);
+	int timer_val = __HAL_TIM_GET_COUNTER(&htim17);
+	HAL_Delay(500);
+	timer_val = __HAL_TIM_GET_COUNTER(&htim17) - timer_val;
+	pos = _putc(_putl(pos, timer_val, 10), '\n');
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+	HAL_ADCEx_Calibration_Start(&hadc1, ADC_CALIB_OFFSET, ADC_SINGLE_ENDED); // ADC
 	while (1) {
 		HAL_ADC_Start(&hadc1);
 		HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
@@ -370,13 +374,44 @@ static void MX_LTDC_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN LTDC_Init 2 */
-
 	pLayerCfg.FBStartAdress = (uint32_t) pixels_565;
 	if (HAL_LTDC_ConfigLayer(&hltdc, &pLayerCfg, 0) != HAL_OK) {
 		Error_Handler();
 	}
 
   /* USER CODE END LTDC_Init 2 */
+
+}
+
+/**
+  * @brief TIM17 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM17_Init(void)
+{
+
+  /* USER CODE BEGIN TIM17_Init 0 */
+
+  /* USER CODE END TIM17_Init 0 */
+
+  /* USER CODE BEGIN TIM17_Init 1 */
+
+  /* USER CODE END TIM17_Init 1 */
+  htim17.Instance = TIM17;
+  htim17.Init.Prescaler = 28000;
+  htim17.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim17.Init.Period = 10000;
+  htim17.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim17.Init.RepetitionCounter = 0;
+  htim17.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim17) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM17_Init 2 */
+
+  /* USER CODE END TIM17_Init 2 */
 
 }
 
@@ -472,7 +507,10 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(USB_FS_PWR_EN_GPIO_Port, USB_FS_PWR_EN_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, LTDC_BL_Pin|I2C1_RST_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(LTDC_BL_GPIO_Port, LTDC_BL_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(I2C1_RST_GPIO_Port, I2C1_RST_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, LD1_Pin|LD3_Pin, GPIO_PIN_RESET);
