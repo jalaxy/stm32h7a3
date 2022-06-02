@@ -118,7 +118,7 @@ int main(void)
 	HAL_GPIO_WritePin(LTDC_BL_GPIO_Port, LTDC_BL_Pin, SET);
 	HAL_TIM_Base_Start_IT(&htim17);
 	int timer_val = __HAL_TIM_GET_COUNTER(&htim17);
-	HAL_Delay(500);
+	HAL_Delay(50);
 	timer_val = __HAL_TIM_GET_COUNTER(&htim17) - timer_val;
 	pos = _putc(_putl(pos, timer_val, 10), '\n');
   /* USER CODE END 2 */
