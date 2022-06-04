@@ -80,20 +80,114 @@ pos_t scrollup(pos_t pos, int n) {
 	return POS(X(pos), Y(pos) - d);
 }
 
-void draw_line(pos_t a, pos_t b, color_t c) {
-	for (float t = .0f; t < 1.f; t += 1e-3) {
-		int x = X(a) * t + X(b) * (1 - t), y = Y(a) * t + Y(b) * (1 - t);
-		if (IN_WINDOW(x, y))
-			draw_dot(POS(x, y), c);
+void fill_rect(pos_t a, pos_t b, color_t c) {
+	int xs = X(a), xe = X(b), ys = Y(a), ye = Y(b);
+	for (int i = ys; i < ye; i++)
+		for (int j = xs; j < xe; j++)
+			pixels_565[i][j] = c;
+}
+
+double partial_area(double x, double y, double cth, double sth) {
+	x -= (int) x;
+	y -= (int) y;
+	double l1, l2, l3, l4, k = sth / cth;
+	l1 = y - x * k;
+	l2 = y + (1 - x) * k;
+	l3 = x - y / k;
+	l4 = x + (1 - y) / k;
+	int b1, b2, b3, b4;
+	b1 = -.001 < l1 && l1 < 1.001;
+	b2 = -.001 < l2 && l2 < 1.001;
+	b3 = -.001 < l3 && l3 < 1.001;
+	b4 = -.001 < l4 && l4 < 1.001;
+	double ret;
+	if (b1 && b2) {
+		return cth > .0 ? (l1 + l2) / 2. : 1. - (l1 + l2) / 2.;
+	} else {
+		if (b1 && b3)
+			ret = 1. - l1 * l3 / 2.;
+		else if (b1 && b4)
+			ret = 1. - (1. - l1) * l4 / 2.;
+		else if (b2 && b3)
+			ret = l2 * (1. - l3) / 2.;
+		else if (b2 && b4)
+			ret = (1. - l2) * (1. - l4) / 2.;
+		else if (b3 && b4)
+			ret = 1. - (l3 + l4) / 2.;
+		else
+			ret = NAN;
+		return sth > .0 ? ret : 1. - ret;
 	}
 }
 
-void draw_ellipse(pos_t ct, pos_t r, color_t c) {
+void draw_line(pos_t a, pos_t b, color_t c, int stroke) {
+	double dx = (double) X(b) - (double) X(a), dy = (double) Y(
+			b) - (double)Y(a);
+	double ox = ((double) X(a) + (double) X(b)) / 2, oy = ((double) Y(a)
+			+ (double) Y(b)) / 2;
+	double d = stroke / 2, l = sqrt(dx * dx + dy * dy) / 2;
+	double cth = dx / 2 / l, sth = dy / 2 / l;
+	double u, v, step = 1 / sqrt(2);
+	for (u = -d; u < d; u += step)
+		for (v = -l; v < l; v += step) {
+			int x = ox + u * sth + v * cth, y = oy - u * cth + v * sth;
+			if (IN_WINDOW(x, y))
+				draw_dot(x, y, c);
+		}
+	for (u = -d; u < d; u += step) {
+		double s1, x, y;
+		x = ox + u * sth + v * cth;
+		y = oy - u * cth + v * sth;
+		if (IN_WINDOW(x, y)) {
+			int x_tr = (int) x, y_tr = (int) y;
+			s1 = partial_area(x, y, -sth, cth);
+			draw_dot(x_tr, y_tr,
+					color_ratio(pixels_565[y_tr][x_tr], s1) + color_ratio(c, 1. - s1));
+		}
+	}
+	v = -l - step;
+	for (u = -d; u < d; u += step) {
+		double s1, x, y;
+		x = ox + u * sth + v * cth;
+		y = oy - u * cth + v * sth;
+		if (IN_WINDOW(x, y)) {
+			int x_tr = (int) x, y_tr = (int) y;
+			s1 = partial_area(x, y, sth, -cth);
+			draw_dot(x_tr, y_tr,
+					color_ratio(pixels_565[y_tr][x_tr], s1) + color_ratio(c, 1. - s1));
+		}
+	}
+	for (v = -l; v < l; v += step) {
+		double s1, x, y;
+		x = ox + u * sth + v * cth;
+		y = oy - u * cth + v * sth;
+		if (IN_WINDOW(x, y)) {
+			int x_tr = (int) x, y_tr = (int) y;
+			s1 = partial_area(x, y, cth, sth);
+			draw_dot(x_tr, y_tr,
+					color_ratio(pixels_565[y_tr][x_tr], s1) + color_ratio(c, 1. - s1));
+		}
+	}
+	u = -d - step;
+	for (v = -l; v < l; v += step) {
+		double s1, x, y;
+		x = ox + u * sth + v * cth;
+		y = oy - u * cth + v * sth;
+		if (IN_WINDOW(x, y)) {
+			int x_tr = (int) x, y_tr = (int) y;
+			s1 = partial_area(x, y, -cth, -sth);
+			draw_dot(x_tr, y_tr,
+					color_ratio(pixels_565[y_tr][x_tr], s1) + color_ratio(c, 1. - s1));
+		}
+	}
+}
+
+void draw_ellipse(pos_t ct, pos_t r, color_t c, int stroke) {
 	float dpi = 2 * acos(-1);
 	for (float t = .0f; t < dpi; t += 1e-3) {
 		int x = X(ct) + X(r) * cos(t), y = Y(ct) + Y(r) * sin(t);
 		if (IN_WINDOW(x, y))
-			draw_dot(POS(x, y), c);
+			draw_dot(x, y, c);
 	}
 }
 

@@ -50,7 +50,7 @@ TIM_HandleTypeDef htim17;
 UART_HandleTypeDef huart3;
 
 /* USER CODE BEGIN PV */
-
+extern unsigned long long tick;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -118,10 +118,16 @@ int main(void)
 	HAL_GPIO_WritePin(LTDC_BL_GPIO_Port, LTDC_BL_Pin, SET);
 	HAL_TIM_Base_Start_IT(&htim17);
 	int timer_val = __HAL_TIM_GET_COUNTER(&htim17);
-	HAL_Delay(50);
+	HAL_Delay(0);
 	timer_val = __HAL_TIM_GET_COUNTER(&htim17) - timer_val;
 	pos = _putc(_putl(pos, timer_val, 10), '\n');
-  /* USER CODE END 2 */
+
+//	clrscreen(RGB565(255, 255, 255));
+	draw_line(POS(100, 500), POS(500, 450), RGB565(0, 0, 0), 5);
+	draw_line(POS(100, 450), POS(500, 500), RGB565(0, 0, 0), 5);
+	draw_line(POS(500, 100), POS(450, 500), RGB565(0, 0, 0), 5);
+	draw_line(POS(450, 100), POS(500, 500), RGB565(0, 0, 0), 5);
+	/* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
@@ -130,7 +136,6 @@ int main(void)
 		HAL_ADC_Start(&hadc1);
 		HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
 		_putl(pos, HAL_ADC_GetValue(&hadc1), 10);
-		HAL_Delay(500);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
