@@ -123,11 +123,11 @@ double partial_area(double x, double y, double cth, double sth) {
 void draw_line(pos_t a, pos_t b, color_t c, int stroke) {
 	double dx = (double) X(b) - (double) X(a), dy = (double) Y(
 			b) - (double)Y(a);
-	double ox = ((double) X(a) + (double) X(b)) / 2, oy = ((double) Y(a)
-			+ (double) Y(b)) / 2;
-	double d = stroke / 2, l = sqrt(dx * dx + dy * dy) / 2;
-	double cth = dx / 2 / l, sth = dy / 2 / l;
-	double u, v, step = 1 / sqrt(2);
+	double ox = ((double) X(a) + (double) X(b)) / 2., oy = ((double) Y(a)
+			+ (double) Y(b)) / 2.;
+	double d = stroke / 2., l = sqrt(dx * dx + dy * dy) / 2.;
+	double cth = dx / 2. / l, sth = dy / 2. / l;
+	double u, v, step = 1. / sqrt(2.);
 	for (u = -d; u < d; u += step)
 		for (v = -l; v < l; v += step) {
 			int x = ox + u * sth + v * cth, y = oy - u * cth + v * sth;
@@ -183,11 +183,19 @@ void draw_line(pos_t a, pos_t b, color_t c, int stroke) {
 }
 
 void draw_ellipse(pos_t ct, pos_t r, color_t c, int stroke) {
-	float dpi = 2 * acos(-1);
-	for (float t = .0f; t < dpi; t += 1e-3) {
-		int x = X(ct) + X(r) * cos(t), y = Y(ct) + Y(r) * sin(t);
+	double dpi = 2. * acos(-1), rstep = 1. / sqrt(2.), tstep = rstep
+			/ ((X(r) > Y(r) ? X(r) : Y(r)) + (stroke /= 2.));
+	int cx = X(ct), cy = Y(ct), rx = X(r), ry = Y(r);
+	for (double dr = -stroke; dr < stroke; dr += rstep)
+		for (double t = .0; t < dpi; t += tstep) {
+			int x = cx + (rx + dr) * cos(t), y = cy + (ry + dr) * sin(t);
+			if (IN_WINDOW(x, y))
+				draw_dot(x, y, c);
+		}
+	for (double t = .0; t < dpi; t += tstep) {
+		int x = cx + (rx + dr) * cos(t), y = cy + (ry + dr) * sin(t);
 		if (IN_WINDOW(x, y))
-			draw_dot(x, y, c);
+			;
 	}
 }
 

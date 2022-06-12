@@ -14,8 +14,8 @@
 #define IN_WINDOW(x, y) ((x) < WINDOW_WIDTH && (x) >= 0 && (y) < WINDOW_HEIGHT && (y) >= 0)
 #define draw_dot(x, y, c) pixels_565[y][x] = (c)
 #define RGB565(r, g, b) (color_t)(((r) >> 3 << 11) | ((g) >> 2 << 5) | ((b) >> 3))
-#define color_ratio(c, r) (((color_t)((((c) >> 11) & 0x1f) * (r)) << 11) | \
-	((color_t)((((c) >> 5) & 0x3f) * (r)) << 5) | (color_t)(((c) & 0x1f) * (r)))
+#define color_ratio(c, r) (((color_t)((((c) >> 11) & 0x1f) * (r) + .5) << 11) | \
+	((color_t)((((c) >> 5) & 0x3f) * (r) + .5) << 5) | (color_t)(((c) & 0x1f) * (r) + .5))
 
 typedef unsigned int pos_t;
 typedef unsigned short color_t;
