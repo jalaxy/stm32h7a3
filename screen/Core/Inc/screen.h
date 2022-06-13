@@ -19,6 +19,9 @@
 
 typedef unsigned int pos_t;
 typedef unsigned short color_t;
+typedef struct point_struct {
+	double x, y;
+} point_t;
 extern unsigned short pixels_565[WINDOW_HEIGHT][WINDOW_WIDTH];
 extern unsigned int monofont[128][144];
 extern float linespace;
@@ -31,8 +34,9 @@ pos_t _putf(pos_t pos, float f, int n);
 pos_t clrscreen(color_t c);
 pos_t scrollup(pos_t pos, int n);
 void fill_rect(pos_t a, pos_t b, color_t c);
-void draw_line(pos_t a, pos_t b, color_t c, int stroke);
-void draw_ellipse(pos_t ct, pos_t r, color_t c, int stroke);
+void draw_line(point_t a, point_t b, color_t c, double stroke, int aa);
+void draw_ellipse(point_t ct, point_t r, color_t c, double stroke, int aa);
+void draw_bezier(int n, point_t *pp, color_t c);
 char touch_reg_init(I2C_HandleTypeDef *phi2c);
 int touch_pos(I2C_HandleTypeDef *phi2c, unsigned short *px, unsigned short *py,
 		unsigned short *status);

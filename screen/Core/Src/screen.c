@@ -5,6 +5,13 @@
 unsigned short pixels_565[WINDOW_HEIGHT][WINDOW_WIDTH];
 float linespace = 1.5;
 
+/**
+ * @brief Print a character
+ *
+ * @param pos position of the character
+ * @param ch the character code
+ * @return next position after print
+ */
 pos_t _putc(pos_t pos, char ch) {
 	if (ch == '\n')
 		return POS(MARGIN_X, Y(pos) + linespace * MONO_HEIGHT);
@@ -23,12 +30,28 @@ pos_t _putc(pos_t pos, char ch) {
 	return POS(x + MONO_WIDTH, y);
 }
 
+/**
+ * @brief Print a string
+ *
+ * @param pos position of the string
+ * @param s the string
+ * @return next position after print
+ */
 pos_t _puts(pos_t pos, char *s) {
 	while (*s)
 		pos = _putc(pos, *s++);
 	return pos;
 }
 
+/**
+ * @brief Print an unsigned long integer
+ *
+ * @param pos position of the integer
+ * @param ul the unsigned long integer
+ * @param base base of the integer
+ *
+ * @return next position after print
+ */
 pos_t _putul(pos_t pos, unsigned long ul, int base) {
 	unsigned long div = ul / base;
 	char digit = ul % base;
@@ -36,6 +59,15 @@ pos_t _putul(pos_t pos, unsigned long ul, int base) {
 	return _putc(div ? _putul(pos, div, base) : pos, digit);
 }
 
+/**
+ * @brief Print a long integer
+ *
+ * @param pos position of the integer
+ * @param l the long integer
+ * @param base base of the integer
+ *
+ * @return next position after print
+ */
 pos_t _putl(pos_t pos, long l, int base) {
 	unsigned long ul;
 	if (l >= 0)
@@ -47,6 +79,15 @@ pos_t _putl(pos_t pos, long l, int base) {
 	return _putul(pos, ul, base);
 }
 
+/**
+ * @brief Print a float number
+ *
+ * @param pos position of the number
+ * @param f the float number
+ * @param n length of fraction
+ *
+ * @return next position after print
+ */
 pos_t _putf(pos_t pos, float f, int n) {
 	if (f < 0) {
 		f = -f;
@@ -62,6 +103,11 @@ pos_t _putf(pos_t pos, float f, int n) {
 	return pos;
 }
 
+/**
+ * @brief Clear screen with a specific color
+ *
+ * @param c the color
+ */
 pos_t clrscreen(color_t c) {
 	for (int i = 0; i < WINDOW_HEIGHT; i++)
 		for (int j = 0; j < WINDOW_WIDTH; j++)
@@ -69,6 +115,13 @@ pos_t clrscreen(color_t c) {
 	return POS(MARGIN_X, MARGIN_Y);
 }
 
+/**
+ * @brief move the screen up
+ *
+ * @param pos current position
+ * @param n number of lines to scroll up
+ * @return next position after scrolling up
+ */
 pos_t scrollup(pos_t pos, int n) {
 	int d = n * linespace * MONO_HEIGHT;
 	for (int i = 0; i < WINDOW_HEIGHT - d; i++)
@@ -80,6 +133,13 @@ pos_t scrollup(pos_t pos, int n) {
 	return POS(X(pos), Y(pos) - d);
 }
 
+/**
+ * @brief Fill a rectangle with specific color
+ *
+ * @param a one point
+ * @param b another point
+ * @param c the color
+ */
 void fill_rect(pos_t a, pos_t b, color_t c) {
 	int xs = X(a), xe = X(b), ys = Y(a), ye = Y(b);
 	for (int i = ys; i < ye; i++)
@@ -87,6 +147,15 @@ void fill_rect(pos_t a, pos_t b, color_t c) {
 			pixels_565[i][j] = c;
 }
 
+/**
+ * @brief Calculate the area proportion in a unit square divided by a line
+ *
+ * @param x x-coordinate of one point on the line
+ * @param y y-coordinate of one point on the line
+ * @param cth the cosine of tilt angle
+ * @param sth the sine of tile angle
+ * @return val one proportion of the separation result
+ */
 double partial_area(double x, double y, double cth, double sth) {
 	x -= (int) x;
 	y -= (int) y;
@@ -120,11 +189,18 @@ double partial_area(double x, double y, double cth, double sth) {
 	}
 }
 
-void draw_line(pos_t a, pos_t b, color_t c, int stroke) {
-	double dx = (double) X(b) - (double) X(a), dy = (double) Y(
-			b) - (double)Y(a);
-	double ox = ((double) X(a) + (double) X(b)) / 2., oy = ((double) Y(a)
-			+ (double) Y(b)) / 2.;
+/**
+ * @brief Draw a line
+ *
+ * @param a one point
+ * @param b another point
+ * @param c the color
+ * @param stroke the width of the line
+ * @param aa whether needs anti-aliasing
+ */
+void draw_line(point_t a, point_t b, color_t c, double stroke, int aa) {
+	double dx = b.x - a.x, dy = b.y - a.y;
+	double ox = (a.x + b.x) / 2., oy = (a.y + b.y) / 2.;
 	double d = stroke / 2., l = sqrt(dx * dx + dy * dy) / 2.;
 	double cth = dx / 2. / l, sth = dy / 2. / l;
 	double u, v, step = 1. / sqrt(2.);
@@ -134,71 +210,123 @@ void draw_line(pos_t a, pos_t b, color_t c, int stroke) {
 			if (IN_WINDOW(x, y))
 				draw_dot(x, y, c);
 		}
-	for (u = -d; u < d; u += step) {
-		double s1, x, y;
-		x = ox + u * sth + v * cth;
-		y = oy - u * cth + v * sth;
-		if (IN_WINDOW(x, y)) {
-			int x_tr = (int) x, y_tr = (int) y;
-			s1 = partial_area(x, y, -sth, cth);
-			draw_dot(x_tr, y_tr,
-					color_ratio(pixels_565[y_tr][x_tr], s1) + color_ratio(c, 1. - s1));
-		}
-	}
-	v = -l - step;
-	for (u = -d; u < d; u += step) {
-		double s1, x, y;
-		x = ox + u * sth + v * cth;
-		y = oy - u * cth + v * sth;
-		if (IN_WINDOW(x, y)) {
-			int x_tr = (int) x, y_tr = (int) y;
-			s1 = partial_area(x, y, sth, -cth);
-			draw_dot(x_tr, y_tr,
-					color_ratio(pixels_565[y_tr][x_tr], s1) + color_ratio(c, 1. - s1));
-		}
-	}
-	for (v = -l; v < l; v += step) {
-		double s1, x, y;
-		x = ox + u * sth + v * cth;
-		y = oy - u * cth + v * sth;
-		if (IN_WINDOW(x, y)) {
-			int x_tr = (int) x, y_tr = (int) y;
-			s1 = partial_area(x, y, cth, sth);
-			draw_dot(x_tr, y_tr,
-					color_ratio(pixels_565[y_tr][x_tr], s1) + color_ratio(c, 1. - s1));
-		}
-	}
-	u = -d - step;
-	for (v = -l; v < l; v += step) {
-		double s1, x, y;
-		x = ox + u * sth + v * cth;
-		y = oy - u * cth + v * sth;
-		if (IN_WINDOW(x, y)) {
-			int x_tr = (int) x, y_tr = (int) y;
-			s1 = partial_area(x, y, -cth, -sth);
-			draw_dot(x_tr, y_tr,
-					color_ratio(pixels_565[y_tr][x_tr], s1) + color_ratio(c, 1. - s1));
-		}
+	double umax = u, vmax = v;
+	double uini[] = { -d, -d, -d - step, umax };
+	double ulmt[] = { d, d, -d, umax + step };
+	double vini[] = { -l - step, vmax, -l, -l };
+	double vlmt[] = { -l, vmax + step, l, l };
+	double ustep[] = { step, step, .0, .0 };
+	double vstep[] = { .0, .0, step, step };
+	double ang1[] = { sth, -sth, -cth, cth };
+	double ang2[] = { -cth, cth, -sth, sth };
+	for (int i = 0; i < 4; i++) {
+		int x_pre = -1, y_pre = -1, c_pre;
+		u = uini[i];
+		v = vini[i];
+		do {
+			double x = ox + u * sth + v * cth, y = oy - u * cth + v * sth;
+			if (IN_WINDOW(x, y)) {
+				int x_tr = (int) x, y_tr = (int) y;
+				double s1 = partial_area(x, y, ang1[i], ang2[i]);
+				if (x_pre != x_tr || y_pre != y_tr) {
+					c_pre = pixels_565[y_tr][x_tr];
+					x_pre = x_tr;
+					y_pre = y_tr;
+				}
+				draw_dot(x_tr, y_tr,
+						aa ? color_ratio(c_pre, s1) + color_ratio(c, 1. - s1) : c);
+			}
+			u += ustep[i];
+			v += vstep[i];
+		} while (u < ulmt[i] && v < vlmt[i]);
 	}
 }
-
-void draw_ellipse(pos_t ct, pos_t r, color_t c, int stroke) {
+/**
+ * @brief Draw a line
+ *
+ * @param ct position of center
+ * @param r radiuses of the ellipse
+ * @param c the color
+ * @param stroke the width of the line
+ * @param aa whether needs anti-aliasing
+ */
+void draw_ellipse(point_t ct, point_t r, color_t c, double stroke, int aa) {
 	double dpi = 2. * acos(-1), rstep = 1. / sqrt(2.), tstep = rstep
-			/ ((X(r) > Y(r) ? X(r) : Y(r)) + (stroke /= 2.));
-	int cx = X(ct), cy = Y(ct), rx = X(r), ry = Y(r);
-	for (double dr = -stroke; dr < stroke; dr += rstep)
+			/ ((r.x > r.y ? r.x : r.y) + (stroke /= 2.)), dr;
+	for (dr = -stroke; dr < stroke; dr += rstep)
 		for (double t = .0; t < dpi; t += tstep) {
-			int x = cx + (rx + dr) * cos(t), y = cy + (ry + dr) * sin(t);
+			int x = ct.x + (r.x + dr) * cos(t), y = ct.y + (r.y + dr) * sin(t);
 			if (IN_WINDOW(x, y))
 				draw_dot(x, y, c);
 		}
-	for (double t = .0; t < dpi; t += tstep) {
-		int x = cx + (rx + dr) * cos(t), y = cy + (ry + dr) * sin(t);
-		if (IN_WINDOW(x, y))
-			;
+	double rxbound[] = { r.x - stroke - rstep, r.x + dr };
+	double rybound[] = { r.y - stroke - rstep, r.y + dr };
+	for (int i = 0; i < 2; i++) {
+		int x_pre = -1, y_pre = -1, c_pre;
+		for (double t = .0; t < dpi; t += tstep) {
+			double cth = cos(t), sth = sin(t);
+			double x = ct.x + rxbound[i] * cth, y = ct.y + rybound[i] * sth;
+			if (IN_WINDOW(x, y)) {
+				int x_tr = (int) x, y_tr = (int) y;
+				double s1 = partial_area(x, y, (1 - 2 * i) * sth,
+						(2 * i - 1) * cth);
+				if (x_pre != x_tr || y_pre != y_tr) {
+					c_pre = pixels_565[y_tr][x_tr];
+					x_pre = x_tr;
+					y_pre = y_tr;
+				}
+				draw_dot(x_tr, y_tr,
+						aa ? color_ratio(c_pre, s1) + color_ratio(c, 1. - s1) : c);
+			}
+		}
 	}
 }
 
+/**
+ * @brief Draw a bezier curve
+ *
+ * @param n the number of points
+ * @param pp the pointer of points, which should contain (3n + 1) points
+ * @param stroke the width of the line
+ * @param aa whether needs anti-aliasing
+ */
+void draw_bezier(int n, point_t *pp, color_t c) {
+	for (int i = 0; i < n; i++) {
+		double x0 = pp[3 * i].x, y0 = pp[3 * i].y;
+		double x1 = pp[3 * i + 1].x, y1 = pp[3 * i + 1].y;
+		double x2 = pp[3 * i + 2].x, y2 = pp[3 * i + 2].y;
+		double x3 = pp[3 * i + 3].x, y3 = pp[3 * i + 3].y;
+		double dbmax = 3 * (x1 - x0 > y1 - y0 ? x1 - x0 : y1 - y0);
+		double db = 3 * (x3 - x2 > y3 - y2 ? x3 - x2 : y3 - y2);
+		if (db > dbmax)
+			dbmax = db;
+		double B = x0 - 2 * x1 + x2;
+		db = 3 * (x1 - x0 - B * B / (-x0 + 3 * x1 - 3 * x2 + x3));
+		if (db > dbmax)
+			dbmax = db;
+		B = y0 - 2 * y1 + y2;
+		db = 3 * (y1 - y0 - B * B / (-y0 + 3 * y1 - 3 * y2 + y3));
+		if (db > dbmax)
+			dbmax = db;
+		double step = 1. / dbmax;
+		for (double t = 0; t < 1; t += step) {
+			double s = 1 - t;
+			int x = s * s * s * x0 + 3 * s * s * t * x1 + 3 * s * t * t * x2
+					+ t * t * t * x3;
+			int y = s * s * s * y0 + 3 * s * s * t * y1 + 3 * s * t * t * y2
+					+ t * t * t * y3;
+			if (IN_WINDOW(x, y))
+				draw_dot(x, y, c);
+		}
+	}
+}
+
+/**
+ * @brief Initialize the register of control chip of touch panal
+ *
+ * @param phi2c the pointer of I2C handle
+ * @return whether successful
+ */
 char touch_reg_init(I2C_HandleTypeDef *phi2c) {
 	unsigned char buf[3];
 	char suc = 1;
@@ -215,6 +343,14 @@ char touch_reg_init(I2C_HandleTypeDef *phi2c) {
 	return suc;
 }
 
+/**
+ * @brief Retrieve the position of touch points
+ *
+ * @param phi2c pointer of I2C handle
+ * @param px pointer of the result x coordinates
+ * @param py pointer of the result y coordinates
+ * @return number of pointers
+ */
 int touch_pos(I2C_HandleTypeDef *phi2c, unsigned short *px, unsigned short *py,
 		unsigned short *status) {
 	unsigned char addr[5] = { 0x03, 0x09, 0x0f, 0x15, 0x1b }, addr_num = 0x02;

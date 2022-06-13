@@ -114,7 +114,7 @@ int main(void)
   MX_TIM17_Init();
   /* USER CODE BEGIN 2 */
 	HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, SET);
-	pos_t pos = clrscreen(0xffff);
+	pos_t pos = clrscreen(RGB565(255, 255, 0));
 	HAL_GPIO_WritePin(LTDC_BL_GPIO_Port, LTDC_BL_Pin, SET);
 	HAL_TIM_Base_Start_IT(&htim17);
 	int timer_val = __HAL_TIM_GET_COUNTER(&htim17);
@@ -122,11 +122,11 @@ int main(void)
 	timer_val = __HAL_TIM_GET_COUNTER(&htim17) - timer_val;
 	pos = _putc(_putl(pos, timer_val, 10), '\n');
 
-	draw_line(POS(100, 500), POS(500, 450), RGB565(0, 0, 0), 5);
-	draw_line(POS(100, 450), POS(500, 500), RGB565(0, 0, 0), 5);
-	draw_line(POS(500, 100), POS(450, 500), RGB565(0, 0, 0), 5);
-	draw_line(POS(450, 100), POS(500, 500), RGB565(0, 0, 0), 5);
-	draw_ellipse(POS(300, 300), POS(100, 100), RGB565(0, 0, 0), 50);
+	draw_ellipse((point_t){400, 300}, (point_t){270, 270}, RGB565(0, 0, 255), 1, 1);
+	point_t p[] = {{130, 300}, {130, -60}, {670, -60}, {670, 300}};
+	draw_bezier(1, p, 0);
+	for (int i = 0; i < 4; i++)
+		draw_ellipse(p[i], (point_t){5, 5}, 0, 1, 1);
   /* USER CODE END 2 */
 
   /* Infinite loop */
