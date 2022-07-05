@@ -208,11 +208,16 @@ void EXTI9_5_IRQHandler(void) {
 /**
  * @brief This function handles EXTI line[15:10] interrupts.
  */
+int y;
 void EXTI15_10_IRQHandler(void) {
 	/* USER CODE BEGIN EXTI15_10_IRQn 0 */
 
 	if (__HAL_GPIO_EXTI_GET_FLAG(B1_Pin)) {
 		HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_14);
+		if (y == 137)
+			y = 147;
+		else
+			y = 137;
 	}
 
 	/* USER CODE END EXTI15_10_IRQn 0 */

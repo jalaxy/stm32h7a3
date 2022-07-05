@@ -346,7 +346,7 @@ int calc_bezier(int ord, double d, int n, point_t *pp, color_t c, pos_t *pout) {
 }
 
 typedef struct y_range_struct {
-	int yb, ye;
+	int yb, ye, adjnum, border;
 	struct y_range_struct *next;
 } y_range_t;
 
@@ -354,77 +354,82 @@ typedef struct y_range_struct {
  * @brief Fill a region with border
  *
  * @param n size of border points array
- * @param p border points array
+ * @param a border points array
  * @param c color to fill
  */
-void fill(int n, pos_t *p, color_t c) {
-	qsort(p, n, sizeof(pos_t), cmppos);
-	int i = 0, cross_pre = -1, extr = 0;
-	y_range_t head = {0, 0, NULL};
+void fill(int n, pos_t *a, color_t c) {
+	qsort(a, n, sizeof(pos_t), cmppos);
+	int i = 0;
+	y_range_t *pre = (y_range_t*) malloc(sizeof(y_range_t)), *cur;
+	pre->next = NULL;
 	while (i < n) {
 		int j = i + 1;
-		int x = X(p[i]);
-		while (j < n && x == X(p[j]))
+		int x = X(a[i]);
+		while (j < n && x == X(a[j]))
 			j++; // [i, j) the same x-coordinate
-		int cross = 0;
-		for (int k = i + 1; k < j; k++)
-			if (abs(Y(p[k]) - Y(p[k - 1])) > 1)
-				cross++;
-		if (cross != cross_pre) {
-			cross_pre = cross;
-			extr = !extr;
+		for (y_range_t *p = pre->next; p; p = p->next)
+			p->adjnum = 0;
+		cur = (y_range_t*) malloc(sizeof(y_range_t));
+		cur->next = NULL;
+		int kb = i;
+		while (kb < j) {
+			int ke = kb;
+			while (ke < j - 1 && Y(a[ke + 1]) - Y(a[ke]) <= 2)
+				ke++; // [kb, ke] is continuous
+			y_range_t *p = (y_range_t*) malloc(sizeof(y_range_t));
+			p->next = cur->next;
+			p->yb = Y(a[kb]);
+			p->ye = Y(a[ke]);
+			p->adjnum = 0;
+			for (y_range_t *pp = pre->next; pp; pp = pp->next)
+				if (pp->yb <= p->ye + 1 && pp->ye >= p->yb - 1) {
+					// adjacency found
+					pp->adjnum++;
+					p->adjnum++;
+				}
+			cur->next = p;
+			kb = ke + 1;
 		}
-		cross = 0;
-		for (int k = i + 1; k < j; k++)
-			if (abs(Y(p[k]) - Y(p[k - 1])) > 1) {
-				if (cross % 2 == 0) {
-					int yb = Y(p[k - 1]), ye = Y(p[k]);
-					for (int y = yb + 1; y < ye; y++)
-						if (IN_WINDOW(x, y))
-							draw_dot(x, y, c);
-				}
-				if (extr) {
-					// should extend more than two column
-					// when 'cross' changed, and not changes again yet,
-					//   this is the border
-					int l = k;
-					while (l < j - 1 && abs(Y(p[l + 1]) - Y(p[l])) <= 1)
-						l++; // [k, l] is continuous
-					int ybl = Y(p[k]), yel = Y(p[l]), ybr = ybl, yer = yel;
-					l = i - 1;
-					while (abs(x - X(p[l])) == 1 && Y(p[l]) > yel + 1)
-						l--;
-					while (abs(x - X(p[l])) == 1)
-						if (Y(p[l++]) == yel + 1)
-							yel++;
-					l = i - 1;
-					while (abs(x - X(p[l])) == 1)
-						if (Y(p[l--]) == ybl - 1)
-							ybl--;
-					while (abs(x - X(p[l])) == 2
-							&& (Y(p[l]) > yel + 1 || Y(p[l]) < ybl - 1))
-						l--;
-					int left = abs(x - X(p[l])) == 2;
-					l = j;
-					while (abs(x - X(p[l])) == 1 && Y(p[l]) < ybl - 1)
-						l++;
-					while (abs(x - X(p[l])) == 1)
-						if (Y(p[l--]) == ybr - 1)
-							ybr--;
-					l = j;
-					while (abs(x - X(p[l])) == 1)
-						if (Y(p[l++]) == yer + 1)
-							yer++;
-					while (abs(x - X(p[l])) == 2
-							&& (Y(p[l]) > yer + 1 || Y(p[l]) < ybr - 1))
-						l++;
-					int right = abs(x - X(p[l])) == 2;
-					if (!left || !right)
-						cross--;
-				}
-				cross++;
+		for (y_range_t *p = cur->next; p; p = p->next)
+			if (p->adjnum == 1) {
+				y_range_t *pp = pre->next;
+				while (pp && !(pp->yb <= p->ye + 1 && pp->ye >= p->yb - 1))
+					pp = pp->next;
+				if (pp->adjnum == 1)
+					p->border = pp->border;
+				else
+					p->border = 0;
+			} else {
+//				int adjnum = 0;
+//				for (y_range_t *pp = pre->next; pp; pp = pp->next)
+//					if (pp->yb <= p->ye + 1 && pp->ye >= p->yb - 1 && !pp->border)
+//						adjnum += pp->adjnum;
+//				p->border = adjnum % 2 == 0;
+				p->border = 1;
 			}
+		int flag = 0;
+		for (y_range_t *p = cur->next; p->next; p = p->next) {
+			if (!p->border)
+				flag = !flag;
+			if (flag) {
+				int yb = p->next->ye + 1, ye = p->yb - 1;
+				for (int y = yb; y <= ye; y++)
+					if (IN_WINDOW(x, y))
+						draw_dot(x, y, c);
+			}
+		}
+		while (pre) {
+			y_range_t *p = pre;
+			pre = pre->next;
+			free(p);
+		}
+		pre = cur;
 		i = j;
+	}
+	while (cur) {
+		y_range_t *p = cur;
+		cur = cur->next;
+		free(p);
 	}
 }
 

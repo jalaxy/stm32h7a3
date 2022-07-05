@@ -37,6 +37,6 @@ void fill_rect(pos_t a, pos_t b, color_t c);
 void draw_line(point_t a, point_t b, color_t c, double stroke, int aa);
 void draw_ellipse(point_t ct, point_t r, color_t c, double stroke, int aa);
 int calc_bezier(int ord, double d, int n, point_t *pp, color_t c, pos_t *pout);
-void fill(int n, pos_t *p, color_t c);
+void fill(int n, pos_t *a, color_t c);
 char touch_reg_init(I2C_HandleTypeDef *phi2c);
 int touch_pos(I2C_HandleTypeDef *phi2c, short *px, short *py, short *status);
