@@ -1,6 +1,7 @@
 #include "screen.h"
 #include "math.h"
 #include "string.h"
+#include "stdlib.h"
 
 unsigned short pixels_565[WINDOW_HEIGHT][WINDOW_WIDTH];
 float linespace = 1.5;
@@ -15,7 +16,7 @@ float linespace = 1.5;
 pos_t _putc(pos_t pos, char ch) {
 	if (ch == '\n')
 		return POS(MARGIN_X, Y(pos) + linespace * MONO_HEIGHT);
-	unsigned short x = X(pos), y = Y(pos);
+	short x = X(pos), y = Y(pos);
 	if (x + MONO_WIDTH > WINDOW_WIDTH - MARGIN_X) {
 		x = MARGIN_X;
 		y += linespace * MONO_HEIGHT;
@@ -282,42 +283,148 @@ void draw_ellipse(point_t ct, point_t r, color_t c, double stroke, int aa) {
 	}
 }
 
+int cmppos(const void *a, const void *b) {
+	return *(pos_t*) a - *(pos_t*) b;
+}
+
 /**
  * @brief Draw a bezier curve
  *
+ * @param ord order of bezier curve, 2 (quadratic) or 3 (cubic)
+ * @param d minimum distance between two sample points
  * @param n the number of points
- * @param pp the pointer of points, which should contain (3n + 1) points
- * @param stroke the width of the line
- * @param aa whether needs anti-aliasing
+ * @param pp the pointer of points, which should contain (order * n + 1) points
+ * @param c the color
+ * @param pout output array
  */
-void draw_bezier(int n, point_t *pp, color_t c) {
+int calc_bezier(int ord, double d, int n, point_t *pp, color_t c, pos_t *pout) {
+	int m = 0;
+	double step;
 	for (int i = 0; i < n; i++) {
-		double x0 = pp[3 * i].x, y0 = pp[3 * i].y;
-		double x1 = pp[3 * i + 1].x, y1 = pp[3 * i + 1].y;
-		double x2 = pp[3 * i + 2].x, y2 = pp[3 * i + 2].y;
-		double x3 = pp[3 * i + 3].x, y3 = pp[3 * i + 3].y;
-		double dbmax = 3 * (x1 - x0 > y1 - y0 ? x1 - x0 : y1 - y0);
-		double db = 3 * (x3 - x2 > y3 - y2 ? x3 - x2 : y3 - y2);
-		if (db > dbmax)
-			dbmax = db;
-		double B = x0 - 2 * x1 + x2;
-		db = 3 * (x1 - x0 - B * B / (-x0 + 3 * x1 - 3 * x2 + x3));
-		if (db > dbmax)
-			dbmax = db;
-		B = y0 - 2 * y1 + y2;
-		db = 3 * (y1 - y0 - B * B / (-y0 + 3 * y1 - 3 * y2 + y3));
-		if (db > dbmax)
-			dbmax = db;
-		double step = 1. / dbmax;
-		for (double t = 0; t < 1; t += step) {
-			double s = 1 - t;
-			int x = s * s * s * x0 + 3 * s * s * t * x1 + 3 * s * t * t * x2
-					+ t * t * t * x3;
-			int y = s * s * s * y0 + 3 * s * s * t * y1 + 3 * s * t * t * y2
-					+ t * t * t * y3;
-			if (IN_WINDOW(x, y))
-				draw_dot(x, y, c);
+		if (ord == 2) {
+			double x0 = pp[2 * i].x, y0 = pp[2 * i].y;
+			double x1 = pp[2 * i + 1].x, y1 = pp[2 * i + 1].y;
+			double x2 = pp[2 * i + 2].x, y2 = pp[2 * i + 2].y;
+			for (double t = 0; t < 1; t += step) {
+				double s = 1 - t;
+				double dx = fabs(2 * s * (x1 - x0) + 2 * t * (x2 - x1));
+				double dy = fabs(2 * s * (y1 - y0) + 2 * t * (y2 - y1));
+				step = d / (dx > dy ? dx : dy);
+				if (pout) {
+					int x = s * s * x0 + 2 * s * t * x1 + t * t * x2;
+					int y = s * s * y0 + 2 * s * t * y1 + t * t * y2;
+					pout[m] = POS(x, y);
+				}
+				m++;
+			}
+		} else if (ord == 3) {
+			double x0 = pp[3 * i].x, y0 = pp[3 * i].y;
+			double x1 = pp[3 * i + 1].x, y1 = pp[3 * i + 1].y;
+			double x2 = pp[3 * i + 2].x, y2 = pp[3 * i + 2].y;
+			double x3 = pp[3 * i + 3].x, y3 = pp[3 * i + 3].y;
+			for (double t = 0; t < 1; t += step) {
+				double s = 1 - t;
+				double dx = fabs(
+						3 * s * s * (x1 - x0) + 6 * s * t * (x2 - x1)
+								+ 3 * t * t * (x3 - x2));
+				double dy = fabs(
+						3 * s * s * (y1 - y0) + 6 * s * t * (y2 - y1)
+								+ 3 * t * t * (y3 - y2));
+				step = d / (dx > dy ? dx : dy);
+				if (pout) {
+					int x = s * s * s * x0 + 3 * s * s * t * x1
+							+ 3 * s * t * t * x2 + t * t * t * x3;
+					int y = s * s * s * y0 + 3 * s * s * t * y1
+							+ 3 * s * t * t * y2 + t * t * t * y3;
+					pout[m] = POS(x, y);
+				}
+				m++;
+			}
 		}
+	}
+	return m;
+}
+
+typedef struct y_range_struct {
+	int yb, ye;
+	struct y_range_struct *next;
+} y_range_t;
+
+/**
+ * @brief Fill a region with border
+ *
+ * @param n size of border points array
+ * @param p border points array
+ * @param c color to fill
+ */
+void fill(int n, pos_t *p, color_t c) {
+	qsort(p, n, sizeof(pos_t), cmppos);
+	int i = 0, cross_pre = -1, extr = 0;
+	y_range_t head = {0, 0, NULL};
+	while (i < n) {
+		int j = i + 1;
+		int x = X(p[i]);
+		while (j < n && x == X(p[j]))
+			j++; // [i, j) the same x-coordinate
+		int cross = 0;
+		for (int k = i + 1; k < j; k++)
+			if (abs(Y(p[k]) - Y(p[k - 1])) > 1)
+				cross++;
+		if (cross != cross_pre) {
+			cross_pre = cross;
+			extr = !extr;
+		}
+		cross = 0;
+		for (int k = i + 1; k < j; k++)
+			if (abs(Y(p[k]) - Y(p[k - 1])) > 1) {
+				if (cross % 2 == 0) {
+					int yb = Y(p[k - 1]), ye = Y(p[k]);
+					for (int y = yb + 1; y < ye; y++)
+						if (IN_WINDOW(x, y))
+							draw_dot(x, y, c);
+				}
+				if (extr) {
+					// should extend more than two column
+					// when 'cross' changed, and not changes again yet,
+					//   this is the border
+					int l = k;
+					while (l < j - 1 && abs(Y(p[l + 1]) - Y(p[l])) <= 1)
+						l++; // [k, l] is continuous
+					int ybl = Y(p[k]), yel = Y(p[l]), ybr = ybl, yer = yel;
+					l = i - 1;
+					while (abs(x - X(p[l])) == 1 && Y(p[l]) > yel + 1)
+						l--;
+					while (abs(x - X(p[l])) == 1)
+						if (Y(p[l++]) == yel + 1)
+							yel++;
+					l = i - 1;
+					while (abs(x - X(p[l])) == 1)
+						if (Y(p[l--]) == ybl - 1)
+							ybl--;
+					while (abs(x - X(p[l])) == 2
+							&& (Y(p[l]) > yel + 1 || Y(p[l]) < ybl - 1))
+						l--;
+					int left = abs(x - X(p[l])) == 2;
+					l = j;
+					while (abs(x - X(p[l])) == 1 && Y(p[l]) < ybl - 1)
+						l++;
+					while (abs(x - X(p[l])) == 1)
+						if (Y(p[l--]) == ybr - 1)
+							ybr--;
+					l = j;
+					while (abs(x - X(p[l])) == 1)
+						if (Y(p[l++]) == yer + 1)
+							yer++;
+					while (abs(x - X(p[l])) == 2
+							&& (Y(p[l]) > yer + 1 || Y(p[l]) < ybr - 1))
+						l++;
+					int right = abs(x - X(p[l])) == 2;
+					if (!left || !right)
+						cross--;
+				}
+				cross++;
+			}
+		i = j;
 	}
 }
 
@@ -351,8 +458,7 @@ char touch_reg_init(I2C_HandleTypeDef *phi2c) {
  * @param py pointer of the result y coordinates
  * @return number of pointers
  */
-int touch_pos(I2C_HandleTypeDef *phi2c, unsigned short *px, unsigned short *py,
-		unsigned short *status) {
+int touch_pos(I2C_HandleTypeDef *phi2c, short *px, short *py, short *status) {
 	unsigned char addr[5] = { 0x03, 0x09, 0x0f, 0x15, 0x1b }, addr_num = 0x02;
 	unsigned char buf[4];
 	char suc = 1;

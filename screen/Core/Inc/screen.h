@@ -8,16 +8,16 @@
 #define ORIGIN_Y 0
 #define MONO_HEIGHT 24
 #define MONO_WIDTH 12
-#define POS(x, y) (((unsigned int)(x) << 16) + (unsigned int)(y))
-#define X(pos) ((unsigned int)(pos) >> 16)
-#define Y(pos) ((unsigned int)(pos) & (unsigned int)(0xffff))
+#define POS(x, y) (((int)(short)(x) << 16) + (int)(short)(y))
+#define X(pos) ((short)((int)(pos) >> 16))
+#define Y(pos) ((short)((int)(pos) & (int)(0xffff)))
 #define IN_WINDOW(x, y) ((x) < WINDOW_WIDTH && (x) >= 0 && (y) < WINDOW_HEIGHT && (y) >= 0)
 #define draw_dot(x, y, c) pixels_565[y][x] = (c)
 #define RGB565(r, g, b) (color_t)(((r) >> 3 << 11) | ((g) >> 2 << 5) | ((b) >> 3))
 #define color_ratio(c, r) (((color_t)((((c) >> 11) & 0x1f) * (r) + .5) << 11) | \
 	((color_t)((((c) >> 5) & 0x3f) * (r) + .5) << 5) | (color_t)(((c) & 0x1f) * (r) + .5))
 
-typedef unsigned int pos_t;
+typedef int pos_t;
 typedef unsigned short color_t;
 typedef struct point_struct {
 	double x, y;
@@ -36,7 +36,7 @@ pos_t scrollup(pos_t pos, int n);
 void fill_rect(pos_t a, pos_t b, color_t c);
 void draw_line(point_t a, point_t b, color_t c, double stroke, int aa);
 void draw_ellipse(point_t ct, point_t r, color_t c, double stroke, int aa);
-void draw_bezier(int n, point_t *pp, color_t c);
+int calc_bezier(int ord, double d, int n, point_t *pp, color_t c, pos_t *pout);
+void fill(int n, pos_t *p, color_t c);
 char touch_reg_init(I2C_HandleTypeDef *phi2c);
-int touch_pos(I2C_HandleTypeDef *phi2c, unsigned short *px, unsigned short *py,
-		unsigned short *status);
+int touch_pos(I2C_HandleTypeDef *phi2c, short *px, short *py, short *status);

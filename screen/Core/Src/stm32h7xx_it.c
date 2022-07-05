@@ -191,7 +191,7 @@ void SysTick_Handler(void) {
 void EXTI9_5_IRQHandler(void) {
 	/* USER CODE BEGIN EXTI9_5_IRQn 0 */
 	if (__HAL_GPIO_EXTI_GET_FLAG(I2C1_INT_Pin)) {
-		unsigned short x[5], y[5];
+		short x[5], y[5];
 		int n = touch_pos(&hi2c1, x, y, NULL);
 		for (int i = 0; i < n; i++)
 			if (IN_WINDOW(x[i], y[i]))
@@ -231,16 +231,6 @@ void TIM17_IRQHandler(void) {
 	/* USER CODE END TIM17_IRQn 0 */
 	HAL_TIM_IRQHandler(&htim17);
 	HAL_GPIO_TogglePin(LD3_GPIO_Port, LD3_Pin);
-	static double pi = acos(-1);
-	draw_line((point_t){400, 300},
-			(point_t){400 + 200 * sin((double )tick / 30. * pi),
-					300 - 200 * cos((double )tick / 30. * pi)},
-			RGB565(255, 255, 0), 1, 0);
-	tick++;
-	draw_line((point_t){400, 300},
-			(point_t){400 + 200 * sin((double )tick / 30. * pi),
-					300 - 200 * cos((double )tick / 30. * pi)},
-			RGB565(0, 0, 255), 1, 1);
 	/* USER CODE BEGIN TIM17_IRQn 1 */
 
 	/* USER CODE END TIM17_IRQn 1 */
