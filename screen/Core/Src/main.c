@@ -119,6 +119,23 @@ int main(void)
 	HAL_GPIO_WritePin(LTDC_BL_GPIO_Port, LTDC_BL_Pin, SET);
 	HAL_TIM_Base_Start_IT(&htim17);
 
+	int ch = 0;
+	while (1) {
+		fill_rect(POS(0, 0), POS(72, 128), 0xffff);
+		int n = svg_path_parse(0.5, vfont_pos[ch + 1] - vfont_pos[ch],
+				vfont_path + vfont_pos[ch],
+				NULL, 0, 0, 0);
+		pos_t *pp = (pos_t*) malloc(sizeof(pos_t) * n);
+		svg_path_parse(0.5, vfont_pos[ch + 1] - vfont_pos[ch],
+				vfont_path + vfont_pos[ch], pp, 1, 0, 1);
+		fill(n, pp, 0);
+		free(pp);
+		ch++;
+		if (ch == 0x7f - '!')
+			ch = 0;
+		HAL_Delay(500);
+	}
+
 	extern int y;
 	y = 500;
 	while (1) {
@@ -126,24 +143,19 @@ int main(void)
 		clrscreen(0xffff);
 		point_t p[] = { { 130, 300 }, { 600, -100 }, { 670, 300 }, { 150, 700 },
 				{ 130, 300 } };
-		point_t p2[] = { { 130, 300 }, { 600, 10 }, { 670, 300 }, { 200, y },
+		point_t p2[] = { { 130, 300 }, { 200, y }, { 670, 300 }, { 600, 10 },
 				{ 130, 300 } };
-		point_t p3[] = { { 300, 240 }, { 370, 160 }, { 400, 240 }, { 320, 290 },
-				{ 300, 240 } };
-		int n = calc_bezier(2, .99, 2, p, 0, NULL);
-		int n2 = calc_bezier(2, .99, 2, p2, 0, NULL);
-		int n3 = calc_bezier(2, .98, 2, p3, 0, NULL);
-		_putl(pos, y, 10);
-		pos_t *pp = (pos_t*) malloc(sizeof(pos_t) * (n + n2 + n3));
-		calc_bezier(2, .99, 2, p, 0, pp);
-		calc_bezier(2, .99, 2, p2, 0, pp + n);
-		calc_bezier(2, .98, 2, p3, 0, pp + n + n2);
-		for (int i = 0; i < n + n2 + n3; i++) {
-			short x = X(pp[i]), y = Y(pp[i]);
-			if (IN_WINDOW(x, y))
-				draw_dot(x, y, 0);
-		}
-		fill(n + n2 + n3, pp, RGB565(255, 255, 0));
+//		point_t p3[] = { { 300, 240 }, { 370, 160 }, { 400, 240 }, { 320, 290 },
+//				{ 300, 240 } };
+		int n = calc_bezier(1, .99, 4, p, NULL, 0, 0, 0);
+		int n2 = calc_bezier(1, .99, 4, p2, NULL, 0, 0, 0);
+//		int n3 = calc_bezier(1, .98, 4, p3, NULL, 0, 0, 0);
+		_putl(pos, n + n2, 10);
+		pos_t *pp = (pos_t*) malloc(sizeof(pos_t) * (n + n2));
+		calc_bezier(1, .99, 4, p, pp, 1, RGB565(0, 0, 0), 1);
+		calc_bezier(1, .99, 4, p2, pp + n, 1, RGB565(0, 0, 0), 1);
+//		calc_bezier(1, .98, 4, p3, pp + n + n2, 1, RGB565(0, 0, 0), 1);
+		fill(n + n2, pp, RGB565(0, 0, 0));
 		free(pp);
 		int y_pre = y;
 		while (y == y_pre)

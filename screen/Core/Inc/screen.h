@@ -25,6 +25,8 @@ typedef struct point_struct {
 extern unsigned short pixels_565[WINDOW_HEIGHT][WINDOW_WIDTH];
 extern unsigned int monofont[128][144];
 extern float linespace;
+extern char vfont_path[];
+extern int vfont_pos[];
 
 pos_t _putc(pos_t pos, char ch);
 pos_t _puts(pos_t pos, char *s);
@@ -36,7 +38,10 @@ pos_t scrollup(pos_t pos, int n);
 void fill_rect(pos_t a, pos_t b, color_t c);
 void draw_line(point_t a, point_t b, color_t c, double stroke, int aa);
 void draw_ellipse(point_t ct, point_t r, color_t c, double stroke, int aa);
-int calc_bezier(int ord, double d, int n, point_t *pp, color_t c, pos_t *pout);
+int calc_bezier(int ord, double d, int n, point_t *pp, pos_t *pout, int draw,
+		color_t c, int aa);
+int svg_path_parse(double d, int len, const char *pathdata, pos_t *pout,
+		int draw, color_t c, int aa);
 void fill(int n, pos_t *a, color_t c);
 char touch_reg_init(I2C_HandleTypeDef *phi2c);
 int touch_pos(I2C_HandleTypeDef *phi2c, short *px, short *py, short *status);
