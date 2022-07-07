@@ -16,16 +16,22 @@
 #define RGB565(r, g, b) (color_t)(((r) >> 3 << 11) | ((g) >> 2 << 5) | ((b) >> 3))
 #define color_ratio(c, r) (((color_t)((((c) >> 11) & 0x1f) * (r) + .5) << 11) | \
 	((color_t)((((c) >> 5) & 0x3f) * (r) + .5) << 5) | (color_t)(((c) & 0x1f) * (r) + .5))
+#define setbit(a, i) ((a)[(i) >> 3] |= 1 << ((i) & 0x7))
+#define unsetbit(a, i) ((a)[(i) >> 3] &= ~(1 << ((i) & 0x7)))
+#define togglebit(a, i) ((a)[(i) >> 3] ^= 1 << ((i) & 0x7))
+#define testbit(a, i) ((a)[(i) >> 3] & (1 << ((i) & 0x7)))
 
 typedef int pos_t;
+typedef struct {
+	int l, t, r, b;
+} rect_t;
 typedef unsigned short color_t;
-typedef struct point_struct {
+typedef struct {
 	double x, y;
 } point_t;
 extern unsigned short pixels_565[WINDOW_HEIGHT][WINDOW_WIDTH];
-extern unsigned int monofont[128][144];
 extern float linespace;
-extern char vfont_path[];
+extern short vfont_path[];
 extern int vfont_pos[];
 
 pos_t _putc(pos_t pos, char ch);
@@ -38,10 +44,11 @@ pos_t scrollup(pos_t pos, int n);
 void fill_rect(pos_t a, pos_t b, color_t c);
 void draw_line(point_t a, point_t b, color_t c, double stroke, int aa);
 void draw_ellipse(point_t ct, point_t r, color_t c, double stroke, int aa);
-int calc_bezier(int ord, double d, int n, point_t *pp, pos_t *pout, int draw,
-		color_t c, int aa);
-int svg_path_parse(double d, int len, const char *pathdata, pos_t *pout,
-		int draw, color_t c, int aa);
-void fill(int n, pos_t *a, color_t c);
+rect_t outline_bezier(int ord, point_t *p, color_t c, int draw, int aa);
+void fill_bezier(int ord, point_t *p, char *bitout, rect_t border);
+rect_t outline_svg_path(pos_t ori, int h, int len, const short *pathdata,
+		color_t c, int draw, int aa);
+void fill_svg_path(pos_t ori, int h, int len, const short *pathdata,
+		char *bitout, rect_t border);
 char touch_reg_init(I2C_HandleTypeDef *phi2c);
 int touch_pos(I2C_HandleTypeDef *phi2c, short *px, short *py, short *status);
