@@ -44,11 +44,14 @@ pos_t scrollup(pos_t pos, int n);
 void fill_rect(pos_t a, pos_t b, color_t c);
 void draw_line(point_t a, point_t b, color_t c, double stroke, int aa);
 void draw_ellipse(point_t ct, point_t r, color_t c, double stroke, int aa);
-rect_t outline_bezier(int ord, point_t *p, color_t c, int draw, int aa);
-void fill_bezier(int ord, point_t *p, char *bitout, rect_t border);
+rect_t outline_bezier(int ord, point_t *p, point_t ori, color_t c, int draw,
+		int aa);
+void fill_bezier(int ord, point_t *p, point_t ori, rect_t bd, char *bitout,
+		char *bitasc, char *bitdesc, double *ptheta, double *pascmin,
+		double *pascmax, double *pdescmin, double *pdescmax, int *pasc);
 rect_t outline_svg_path(pos_t ori, int h, int len, const short *pathdata,
 		color_t c, int draw, int aa);
 void fill_svg_path(pos_t ori, int h, int len, const short *pathdata,
-		char *bitout, rect_t border);
+		char *bitout, rect_t bd);
 char touch_reg_init(I2C_HandleTypeDef *phi2c);
 int touch_pos(I2C_HandleTypeDef *phi2c, short *px, short *py, short *status);

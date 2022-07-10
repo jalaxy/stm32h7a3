@@ -303,10 +303,11 @@ void draw_ellipse(point_t ct, point_t r, color_t c, double stroke, int aa) {
  * @param draw whether to draw
  * @return border rectangle
  */
-rect_t outline_bezier(int ord, point_t *p, color_t c, int draw, int aa) {
+rect_t outline_bezier(int ord, point_t *p, point_t ori, color_t c, int draw,
+		int aa) {
 	double step;
 	int x_pre = -1, y_pre = -1, c_pre;
-	rect_t bd = (rect_t ) { p[0].x, p[0].y, p[0].x, p[0].y };
+	rect_t bd = (rect_t ) { ori.x, ori.y, ori.x, ori.y };
 	for (double t = 0; t < 1; t += step) {
 		double x, y, dx, dy, s = 1. - t;
 		if (ord == 1) {
@@ -359,20 +360,33 @@ rect_t outline_bezier(int ord, point_t *p, color_t c, int draw, int aa) {
  * @brief Fill a closed bezier curve
  *
  * @param ord order of bezier curve, 1 (linear), 2 (quadratic) or 3 (cubic)
- * @param pp the pointer of points, which should contain (order + 1) points
- * @param c the color
- * @param bitout bitmap output
- * @param border real border of the curve
+ * @param p the pointer of points, which should contain (order + 1) points
+ * @param ori the origin
+ * @param bd real border of the curve
+ * @param bitasc bitmap of angle ascending pixels
+ * @param bitdesc bitmap of angle descending pixels
+ * @param ptheta pointer of previous angle
  */
-void fill_bezier(int ord, point_t *p, char *bitout, rect_t border) {
-	double step;
-	int wd = border.r - border.l + 1, ht = border.b - border.t + 1;
+void fill_bezier(int ord, point_t *p, point_t ori, rect_t bd, char *bitout,
+		char *bitasc, char *bitdesc, double *ptheta, double *pascmin,
+		double *pascmax, double *pdescmin, double *pdescmax, int *pasc) {
+	int wd = bd.r - bd.l + 1, ht = bd.b - bd.t + 1;
 	int bitsz = wd * ht / 8 + 1;
-	char *pre = (char*) malloc(bitsz), *cur = (char*) malloc(bitsz);
-	memset(pre, 0, bitsz);
-	double xb = p[0].x, yb = p[0].y;
-	double xe = p[ord].x, ye = p[ord].y;
-	for (double t = 0; t < 1; t += step) {
+	double step;
+	int done = 0, start = 0, startzero = 0;
+	const double pi = acos(-1);
+	double t_pre = 0;
+	for (double t = .0; !done; t += step) {
+		if (startzero) {
+			t = .0;
+			startzero = 0;
+		}
+		if (t < .0)
+			break;
+		else if (t > 1.) {
+			t = 1.;
+			done = 1;
+		}
 		double x, y, dx, dy, s = 1. - t;
 		if (ord == 1) {
 			x = p[0].x * s + p[1].x * t;
@@ -395,53 +409,98 @@ void fill_bezier(int ord, point_t *p, char *bitout, rect_t border) {
 					+ 3 * t * t * (p[3].y - p[2].y);
 		}
 		step = .7 / sqrt(dx * dx + dy * dy);
-		double ratio = ((x - xb) * (xe - xb) + (y - yb) * (ye - yb))
-				/ ((xe - xb) * (xe - xb) + (ye - yb) * (ye - yb));
-		double xp = xb + ratio * (xe - xb), yp = yb + ratio * (ye - yb);
-		double ustep = .7 / sqrt((xp - x) * (xp - x) + (yp - y) * (yp - y));
-		memset(cur, 0, bitsz);
-		for (double u = 0; u < 1; u += ustep) {
-			double v = 1. - u;
-			int xtr = x * v + xp * u - border.l;
-			int ytr = y * v + yp * u - border.t;
-			if (xtr >= 0 && xtr < wd && ytr >= 0 && ytr < ht) {
-				int idx = xtr + ytr * wd;
-				if (!testbit(pre, idx) && !testbit(cur, idx))
-					togglebit(bitout, idx);
-				setbit(cur, idx);
+		double deltax = x - ori.x, deltay = y - ori.y;
+		double deltar = sqrt(deltax * deltax + deltay * deltay);
+		double theta = acos(deltax / deltar);
+		if (deltay < 0)
+			theta = -theta;
+		while (*ptheta != INFINITY && theta - *ptheta < -1.)
+			theta += 2 * pi;
+		while (*ptheta != -INFINITY && theta - *ptheta > 1.)
+			theta -= 2 * pi;
+		int asc = theta > *ptheta, desc = theta < *ptheta;
+		*ptheta = theta;
+		if (!start) {
+			if (t > .0) {
+				if (asc) {
+					*ptheta -= .1;
+					t = .0;
+					start = startzero = 1;
+				} else if (desc) {
+					*ptheta += .1;
+					t = .0;
+					start = startzero = 1;
+				}
+			}
+			continue;
+		}
+		if (asc) {
+			if (theta > *pascmax)
+				*pascmax = theta;
+			else if (theta < *pascmin)
+				*pascmin = theta;
+//			if (fabs(theta - *pascmax) >= 2 * pi
+//					|| fabs(theta - *pascmin) >= 2 * pi) {
+//				*pascmax = *pascmin = theta;
+//				memset(bitasc, 0, bitsz);
+//			}
+		}
+		if (desc) {
+			if (theta > *pdescmax)
+				*pdescmax = theta;
+			else if (theta < *pdescmin)
+				*pdescmin = theta;
+//			if (fabs(theta - *pdescmax) >= 2 * pi
+//					|| fabs(theta - *pdescmin) >= 2 * pi) {
+//				*pdescmax = *pdescmin = theta;
+//				memset(bitdesc, 0, bitsz);
+//			}
+		}
+		if (*pasc && desc) {
+			t = t_pre;
+			*ptheta += .1;
+			if (!(theta >= *pdescmin && theta <= *pdescmax)) {
+				*pdescmax = -(*pdescmin = INFINITY);
+				memset(bitdesc, 0, bitsz);
 			}
 		}
-		char *tmp = pre;
-		pre = cur;
-		cur = tmp;
-	}
-	free(pre);
-	free(cur);
-	for (double t = 0; t < 1; t += step) {
-		double x, y, dx, dy, s = 1. - t;
-		if (ord == 1) {
-			x = p[0].x * s + p[1].x * t;
-			y = p[0].y * s + p[1].y * t;
-			dx = p[1].x - p[0].x;
-			dy = p[1].y - p[0].y;
-		} else if (ord == 2) {
-			x = s * s * p[0].x + 2 * s * t * p[1].x + t * t * p[2].x;
-			y = s * s * p[0].y + 2 * s * t * p[1].y + t * t * p[2].y;
-			dx = 2 * s * (p[1].x - p[0].x) + 2 * t * (p[2].x - p[1].x);
-			dy = 2 * s * (p[1].y - p[0].y) + 2 * t * (p[2].y - p[1].y);
-		} else if (ord == 3) {
-			x = s * s * s * p[0].x + 3 * s * s * t * p[1].x
-					+ 3 * s * t * t * p[2].x + t * t * t * p[3].x;
-			y = s * s * s * p[0].y + 3 * s * s * t * p[1].y
-					+ 3 * s * t * t * p[2].y + t * t * t * p[3].y;
-			dx = 3 * s * s * (p[1].x - p[0].x) + 6 * s * t * (p[2].x - p[1].x)
-					+ 3 * t * t * (p[3].x - p[2].x);
-			dy = 3 * s * s * (p[1].y - p[0].y) + 6 * s * t * (p[2].y - p[1].y)
-					+ 3 * t * t * (p[3].y - p[2].y);
+		if (!*pasc && asc) {
+			t = t_pre;
+			*ptheta -= .1;
+			if (!(theta >= *pascmin && theta >= *pascmax)) {
+				*pascmax = -(*pascmin = INFINITY);
+				memset(bitasc, 0, bitsz);
+			}
 		}
-		step = .7 / sqrt(dx * dx + dy * dy);
-		int idx = (int) (x - border.l) + ((int) (y - border.t)) * wd;
-		unsetbit(bitout, idx);
+		if (asc)
+			*pasc = 1;
+		if (desc)
+			*pasc = 0;
+		double ustep = .7
+				/ sqrt((x - ori.x) * (x - ori.x) + (y - ori.y) * (y - ori.y));
+		for (double u = .0; u < 1.; u += ustep) {
+			double v = 1. - u;
+			int xtr = u * ori.x + v * x - bd.l, ytr = u * ori.y + v * y - bd.t;
+			if (xtr >= 0 && xtr < wd && ytr >= 0 && ytr <= ht) {
+				int idx = xtr + ytr * wd;
+				if (asc && !testbit(bitasc, idx)) {
+//					togglebit(bitout, idx);
+					pixels_565[ytr + bd.t][xtr + bd.l] =
+							pixels_565[ytr + bd.t][xtr + bd.l] == 0xffff ?
+									0x001f : 0xffff;
+					setbit(bitasc, idx);
+					unsetbit(bitdesc, idx);
+				} else if (desc && !testbit(bitdesc, idx)) {
+//					togglebit(bitout, idx);
+					pixels_565[ytr + bd.t][xtr + bd.l] =
+							pixels_565[ytr + bd.t][xtr + bd.l] == 0xffff ?
+									0x001f : 0xffff;
+					setbit(bitdesc, idx);
+					unsetbit(bitasc, idx);
+				}
+			}
+		}
+		t_pre = t;
 	}
 }
 
@@ -475,25 +534,25 @@ rect_t outline_svg_path(pos_t ori, int h, int len, const short *pathdata,
 			if (start.x == p[0].x && start.y == p[0].y)
 				break;
 			p[1] = start;
-			rc = outline_bezier(1, p, c, draw, aa);
+			rc = outline_bezier(1, p, start, c, draw, aa);
 			break;
 		case 'h':
 			d1 = pathdata[++i] * ratio;
 			p[1] = (point_t ) { p[0].x + d1, p[0].y };
-			rc = outline_bezier(1, p, c, draw, aa);
+			rc = outline_bezier(1, p, start, c, draw, aa);
 			p[0] = p[1];
 			break;
 		case 'v':
 			d1 = pathdata[++i] * ratio;
 			p[1] = (point_t ) { p[0].x, p[0].y + d1 };
-			rc = outline_bezier(1, p, c, draw, aa);
+			rc = outline_bezier(1, p, start, c, draw, aa);
 			p[0] = p[1];
 			break;
 		case 'l':
 			d1 = pathdata[++i] * ratio;
 			d2 = pathdata[++i] * ratio;
 			p[1] = (point_t ) { p[0].x + d1, p[0].y + d2 };
-			rc = outline_bezier(1, p, c, draw, aa);
+			rc = outline_bezier(1, p, start, c, draw, aa);
 			p[0] = p[1];
 			break;
 		case 't':
@@ -501,7 +560,7 @@ rect_t outline_svg_path(pos_t ori, int h, int len, const short *pathdata,
 			d2 = pathdata[++i] * ratio;
 			p[1] = (point_t ) { p[0].x * 2 - p[1].x, p[0].y * 2 - p[1].y };
 			p[2] = (point_t ) { p[0].x + d1, p[0].y + d2 };
-			rc = outline_bezier(2, p, c, draw, aa);
+			rc = outline_bezier(2, p, start, c, draw, aa);
 			p[0] = p[2];
 			break;
 		case 'q':
@@ -511,7 +570,7 @@ rect_t outline_svg_path(pos_t ori, int h, int len, const short *pathdata,
 			d4 = pathdata[++i] * ratio;
 			p[1] = (point_t ) { p[0].x + d1, p[0].y + d2 };
 			p[2] = (point_t ) { p[0].x + d3, p[0].y + d4 };
-			rc = outline_bezier(2, p, c, draw, aa);
+			rc = outline_bezier(2, p, start, c, draw, aa);
 			p[0] = p[2];
 			break;
 		default:
@@ -533,39 +592,59 @@ rect_t outline_svg_path(pos_t ori, int h, int len, const short *pathdata,
 
 /**
  * @brief Fill an SVG path
+ *
+ * @param ori the origin
+ * @param h height of scale box
+ * @param len length of data
+ * @param pathdata SVG path data
+ * @param bitout output bitmap
+ * @param bd border to fill
  */
 void fill_svg_path(pos_t ori, int h, int len, const short *pathdata,
-		char *bitout, rect_t border) {
+		char *bitout, rect_t bd) {
 	int i = 0;
-	point_t p[3];
+	point_t p[3], o;
 	double ratio = h / 32768., ox = X(ori), oy = Y(ori);
+	int bitsz = (bd.r - bd.l + 1) * (bd.b - bd.t + 1) / 8 + 1;
+	double theta = acos(-1) + 1.;
+	char *bitasc = (char*) malloc(bitsz);
+	char *bitdesc = (char*) malloc(bitsz);
+	double ascmin, ascmax, descmin, descmax;
+	ascmin = descmin = INFINITY;
+	ascmax = descmax = -INFINITY;
+	int asc;
+	memset(bitasc, 0, bitsz);
+	memset(bitdesc, 0, bitsz);
 	while (i < len) {
 		double d1, d2, d3, d4;
 		switch (pathdata[i]) {
 		case 'M':
 			d1 = pathdata[++i] * ratio;
 			d2 = pathdata[++i] * ratio;
-			p[0] = (point_t ) { ox + d1, oy + d2 };
+			o = p[0] = (point_t ) { ox + d1, oy + d2 };
 			break;
 		case 'z':
 			break;
 		case 'h':
 			d1 = pathdata[++i] * ratio;
 			p[1] = (point_t ) { p[0].x + d1, p[0].y };
-			fill_bezier(1, p, bitout, border);
+			fill_bezier(1, p, o, bd, bitout, bitasc, bitdesc, &theta, &ascmin,
+					&ascmax, &descmin, &descmax, &asc);
 			p[0] = p[1];
 			break;
 		case 'v':
 			d1 = pathdata[++i] * ratio;
 			p[1] = (point_t ) { p[0].x, p[0].y + d1 };
-			fill_bezier(1, p, bitout, border);
+			fill_bezier(1, p, o, bd, bitout, bitasc, bitdesc, &theta, &ascmin,
+					&ascmax, &descmin, &descmax, &asc);
 			p[0] = p[1];
 			break;
 		case 'l':
 			d1 = pathdata[++i] * ratio;
 			d2 = pathdata[++i] * ratio;
 			p[1] = (point_t ) { p[0].x + d1, p[0].y + d2 };
-			fill_bezier(1, p, bitout, border);
+			fill_bezier(1, p, o, bd, bitout, bitasc, bitdesc, &theta, &ascmin,
+					&ascmax, &descmin, &descmax, &asc);
 			p[0] = p[1];
 			break;
 		case 't':
@@ -573,7 +652,8 @@ void fill_svg_path(pos_t ori, int h, int len, const short *pathdata,
 			d2 = pathdata[++i] * ratio;
 			p[1] = (point_t ) { p[0].x * 2 - p[1].x, p[0].y * 2 - p[1].y };
 			p[2] = (point_t ) { p[0].x + d1, p[0].y + d2 };
-			fill_bezier(2, p, bitout, border);
+			fill_bezier(2, p, o, bd, bitout, bitasc, bitdesc, &theta, &ascmin,
+					&ascmax, &descmin, &descmax, &asc);
 			p[0] = p[2];
 			break;
 		case 'q':
@@ -583,7 +663,8 @@ void fill_svg_path(pos_t ori, int h, int len, const short *pathdata,
 			d4 = pathdata[++i] * ratio;
 			p[1] = (point_t ) { p[0].x + d1, p[0].y + d2 };
 			p[2] = (point_t ) { p[0].x + d3, p[0].y + d4 };
-			fill_bezier(2, p, bitout, border);
+			fill_bezier(2, p, o, bd, bitout, bitasc, bitdesc, &theta, &ascmin,
+					&ascmax, &descmin, &descmax, &asc);
 			p[0] = p[2];
 			break;
 		default:
@@ -591,6 +672,8 @@ void fill_svg_path(pos_t ori, int h, int len, const short *pathdata,
 		}
 		i++;
 	}
+	free(bitasc);
+	free(bitdesc);
 }
 
 /**

@@ -121,29 +121,50 @@ int main(void)
 	HAL_TIM_Base_Start_IT(&htim17);
 
 //	while (1) {
-//		point_t p[] = { { 10, 100 }, {75, 0}, { 125, 0 }, { 190, 100 } };
-//		rect_t border = outline_bezier(3, p, 0x0, 1, 1);
-//		int sz = (border.r - border.l) * (border.b - border.t) / 8;
+//		point_t p[] = { { 50, 100 }, { -50, 0 }, { 250, 0 }, { 150, 100 } };
+//		point_t p2[] = { { 150, 100 }, { 200, 160 }, { 150, 200 } };
+//		point_t start = { 100, 200 };
+//		rect_t border = outline_bezier(3, p, start, 0x0, 0, 1);
+//		rect_t border2 = outline_bezier(2, p2, start, 0x0, 0, 1);
+//		if (border2.l < border.l)
+//			border.l = border2.l;
+//		if (border2.r > border.r)
+//			border.r = border2.r;
+//		if (border2.t < border.t)
+//			border.t = border2.t;
+//		if (border2.b > border.b)
+//			border.b = border2.b;
+//		int sz = (border.r - border.l + 1) * (border.b - border.t + 1) / 8 + 1;
 //		char *bitout = (char*) malloc(sz);
+//		char *bitasc = (char*) malloc(sz);
+//		char *bitdesc = (char*) malloc(sz);
 //		memset(bitout, 0, sz);
-//		fill_bezier(3, p, bitout, border);
+//		memset(bitasc, 0, sz);
+//		memset(bitdesc, 0, sz);
+//		double theta;
+//		fill_bezier(3, p, start, border, bitout, bitasc, bitdesc, &theta);
+//		fill_bezier(2, p2, start, border, bitout, bitasc, bitdesc, &theta);
 //		for (int x = border.l; x < border.r; x++)
 //			for (int y = border.t; y < border.b; y++)
-//				if (testbit(bitout, (y - border.t) * (border.r - border.l) + (x - border.l)))
-//					draw_dot(x, y, 0x0000);
-//		free(bitout);
+//				if (testbit(bitout, (y - border.t) * (border.r - border.l + 1) + (x - border.l)))
+//					draw_dot(x, y, 0x001f);
+//		free(bitasc);
+//		free(bitdesc);
+//		outline_bezier(3, p, start, 0x0, 1, 1);
+//		outline_bezier(2, p2, start, 0x0, 1, 1);
 //		while (1)
 //			;
 //	}
 
 	int ch = 0;
 	while (1) {
+//		ch = '@' - '!';
 		clrscreen(0xffff);
-		rect_t border = outline_svg_path(POS(0, 0), 512,
+		rect_t border = outline_svg_path(POS(0, 0), 32,
 				vfont_pos[ch + 1] - vfont_pos[ch], vfont_path + vfont_pos[ch],
 				0, 0, 0);
-		fill_rect(POS(border.l, border.t), POS(border.r, border.b), RGB565(255, 255, 0));
-		outline_svg_path(POS(0, 0), 512, vfont_pos[ch + 1] - vfont_pos[ch],
+//		fill_rect(POS(border.l, border.t), POS(border.r, border.b), RGB565(255, 255, 0));
+		outline_svg_path(POS(0, 0), 32, vfont_pos[ch + 1] - vfont_pos[ch],
 				vfont_path + vfont_pos[ch], 0, 1, 0);
 		if (border.l == -1 || border.r == -1 || border.b == -1 || border.t == -1) {
 			fill_rect(POS(0, 0), POS(100, 100), 0xf800);
@@ -152,45 +173,21 @@ int main(void)
 		int sz = (border.r - border.l + 1) * (border.b - border.t + 1) / 8 + 1;
 		char *bitout = (char*) malloc(sz);
 		memset(bitout, 0, sz);
-		fill_svg_path(POS(0, 0), 512, vfont_pos[ch + 1] - vfont_pos[ch],
+		fill_svg_path(POS(0, 0), 32, vfont_pos[ch + 1] - vfont_pos[ch],
 				vfont_path + vfont_pos[ch], bitout, border);
 		for (int x = border.l; x < border.r; x++)
 			for (int y = border.t; y < border.b; y++)
-				if (testbit(bitout, (y - border.t) * (border.r - border.l + 1) + (x - border.l)))
-					draw_dot(x, y, 0x001f);
+				if (IN_WINDOW(x, y))
+					if (testbit(bitout, (y - border.t) * (border.r - border.l + 1) + (x - border.l)))
+						draw_dot(x, y, 0x001f);
 		free(bitout);
 		ch++;
 		if (ch == 0x7f - '!')
 			ch = 0;
+		HAL_Delay(500);
 //		while (1);
-//		HAL_Delay(500);
 	}
 
-	extern int y;
-	y = 500;
-	while (1) {
-		y++;
-		clrscreen(0xffff);
-		point_t p[] = { { 130, 300 }, { 600, -100 }, { 670, 300 }, { 150, 700 },
-				{ 130, 300 } };
-		point_t p2[] = { { 130, 300 }, { 200, y }, { 670, 300 }, { 600, 10 },
-				{ 130, 300 } };
-		point_t p3[] = { { 300, 240 }, { 370, 160 }, { 400, 240 }, { 320, 290 },
-				{ 300, 240 } };
-		double sc = 1.;
-		for (int i = 0; i < sizeof(p) / sizeof(point_t); i++)
-			p[i].x *= sc, p[i].y *= sc;
-		for (int i = 0; i < sizeof(p2) / sizeof(point_t); i++)
-			p2[i].x *= sc, p2[i].y *= sc;
-		for (int i = 0; i < sizeof(p3) / sizeof(point_t); i++)
-			p3[i].x *= sc, p3[i].y *= sc;
-		outline_bezier(2, p, RGB565(0, 0, 0), 1, 0);
-		outline_bezier(2, p2, RGB565(0, 0, 0), 1, 0);
-		outline_bezier(2, p3, RGB565(0, 0, 0), 1, 0);
-		int y_pre = y;
-		while (y == y_pre)
-			;
-	}
   /* USER CODE END 2 */
 
   /* Infinite loop */
